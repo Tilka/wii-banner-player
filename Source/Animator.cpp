@@ -35,7 +35,7 @@ float BlendValue(FrameNumber frame, const std::map<FrameNumber, KeyFrame>& key_f
 	auto prev = next;
 
 	// if this is not the current frame and not the first keyframe, use the previous one
-	if (frame < prev->first && key_frames.end() != prev)
+	if (frame < prev->first && key_frames.begin() != prev)
 		--prev;
 
 	// TODO: use "blend", dunno how it works
