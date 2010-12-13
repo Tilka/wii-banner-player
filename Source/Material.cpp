@@ -107,8 +107,8 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	// color/alpha texture source
 	if (flags.ua4)
 	{
-		char color_matsrc;
-		char alpha_matsrc;
+		u8 color_matsrc;
+		u8 alpha_matsrc;
 
 		file >> BE >> color_matsrc >> alpha_matsrc;
 		file.seekg(2, std::ios::cur);
@@ -135,10 +135,10 @@ GLenum wraps[] =
 
 void Material::Bind() const
 {
-	if (!texture)
-		return;
-
-	texture->Bind(0);
+	if (texture)
+		texture->Bind(0);
+	//else
+		//std::cout << "Material has no texture: " << name << '\n';
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, SAFE_ARRAY_VALUE(wraps, wrap_s));
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, SAFE_ARRAY_VALUE(wraps, wrap_t));

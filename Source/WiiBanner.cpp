@@ -180,6 +180,9 @@ FrameNumber LoadAnimators(std::istream& file, F func, FrameNumber frame_offset =
 					else if (magic == "RLTP")
 						type = RLTP;
 
+					std::cout << "\ttag: ";
+					std::cout.write((char*)magic.data, 4) << '\n';
+
 					ReadOffsetList(file, entry_count, origin, [&]
 					{
 						u8 unk;
@@ -205,7 +208,8 @@ FrameNumber LoadAnimators(std::istream& file, F func, FrameNumber frame_offset =
 
 								file >> BE >> frame >> value >> blend;
 
-								//std::cout << "\t\t\tcoord: frame: " << frame << " value: " << value << " blend: " << blend << '\n';
+								if (animator.name == "Brawl")
+								std::cout << "\t\t\tcoord: frame: " << frame << " value: " << value << " blend: " << blend << '\n';
 
 								// add a new keyframe to the latest animator
 								animator.key_frames[KeyFrameType(type, index)][frame + frame_offset] = KeyFrame(value, blend);
@@ -220,7 +224,8 @@ FrameNumber LoadAnimators(std::istream& file, F func, FrameNumber frame_offset =
 								file >> BE >> frame >> value;
 								file.seekg(2, std::ios::cur);
 
-								//std::cout << "\t\t\tcoord: frame: " << frame << " value: " << value << '\n';
+								if (animator.name == "Brawl")
+								std::cout << "\t\t\tcoord: frame: " << frame << " value: " << value << '\n';
 
 								// add a new keyframe to the latest animator
 								animator.key_frames[KeyFrameType(type, index)][frame + frame_offset] = KeyFrame(value, 0);
@@ -319,12 +324,16 @@ WiiBanner::WiiBanner(const std::string& path)
 
 				const auto texture_offset = banner_arc.GetFileOffset("arc/timg/" + fname);
 
+				std::cout << '\t' << textures.size() << ' ' << fname << '\n';
+
 				file.clear();
 				file.seekg(texture_offset, std::ios::beg);
 				textures.push_back(new Texture(file));
+
 			}, 4);
 
 			std::cout << "\tloaded " << textures.size() << " textures\n";
+			//std::cin.get();
 		}
 		else if (header.magic == "mat1")
 		{
@@ -387,10 +396,6 @@ WiiBanner::WiiBanner(const std::string& path)
 	file.seekg(brlan_loop_offset, std::ios::beg);
 	frame_loop_end = frame_loop_start + LoadAnimators(file, add_animators);
 
-	// hacks to force replay
-	//frame_loop_start = 0;
-	//frame_loop_end = 300;
-
 	SetFrame(frame_current);
 }
 
@@ -410,14 +415,19 @@ void WiiBanner::SetFrame(FrameNumber frame)
 void WiiBanner::Render()
 {
 	glLoadIdentity();
-	glOrtho(0, width, 0, height, -1000, 1000);
+	//glOrtho(-width, 0, -height, 0, -1000, 1000);
 
-	if (centered)
-		glTranslatef(width / 2, height / 2, 0);
+	glOrtho(-640, 0, -480, 0, -1000, 1000);
+
+	//glOrtho(-608/2, 608/2, -456/2, 456/2, -1000, 1000);
+
+	//if (centered)
+		//glTranslatef(width / 2, height / 2, 0);
 
 	// TODO: HAX this line should not be needed!!!
-	glTranslatef(width / 2, height / 2, 0);
+	//glTranslatef(width / 2, height / 2, 0);
 
+	// usually there is only one root pane, probably always
 	ForEach(panes, [&](Pane* pane)
 	{
 		pane->Render();

@@ -27,6 +27,9 @@ distribution.
 
 #include "TextureDecoder.h"
 
+static u8 g_texture_read_buffer[512 * 512 * 4];
+static u8 g_texture_decode_buffer[512 * 512 * 4];
+
 Texture::Texture(std::istream& file)
 {
 	const std::streamoff file_start = file.tellg();
@@ -34,14 +37,14 @@ Texture::Texture(std::istream& file)
 	// read file header
 	FourCC magic; // Magic (0x00, 0x20, 0xAF, 0x30)
 	u32 count; // ntextures - Number of Textures in File
-	u32 size; // size of Header (always 0x0c in files with this structure)
+	u32 header_size; // size of Header (always 0x0c in files with this structure)
 
-	file >> magic >> BE >> count >> size;
+	file >> magic >> BE >> count >> header_size;
 
-	//std::cout << "Texture::Texture() count = " << count << '\n';
+	std::cout << "Texture::Texture() count = " << count << '\n';
 
 	// seek to end of header
-	file.seekg(size - 0xC, std::ios::cur);
+	file.seekg(header_size - 0xC, std::ios::cur);
 
 	// read texture offsets
 	std::streamoff next_offset = file.tellg();
@@ -79,16 +82,17 @@ Texture::Texture(std::istream& file)
 		// http://pabut.homeip.net:8000/yagcd/chap14.html#sec14.4
 		//
 
-		const int size = TexDecoder_GetTextureSizeInBytes(frame.width, frame.height, format);
-		const u8* const src = new u8[size];
-		file.read((char*)src, size);
+		const int tex_size = TexDecoder_GetTextureSizeInBytes(frame.width, frame.height, format);
 
-		u8* const dst = new u8[frame.width * frame.height * 8];
-		TexDecoder_Decode(dst, src, frame.width, frame.height, format, 0, 0, true);
-		delete[] src;
+		if (tex_size > sizeof(g_texture_read_buffer) || (frame.width * frame.height * 4) > sizeof(g_texture_decode_buffer))
+			std::cout << "texture is too large\n";
+		else
+		{
+			file.read((char*)g_texture_read_buffer, tex_size);
+			TexDecoder_Decode(g_texture_decode_buffer, g_texture_read_buffer, frame.width, frame.height, format, 0, 0, true);
+		}
 
-		frame.Load(dst);
-		delete[] dst;
+		frame.Load(g_texture_decode_buffer);
 
 		frames.push_back(frame);
 	}

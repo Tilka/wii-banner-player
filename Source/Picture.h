@@ -33,7 +33,7 @@ public:
 	Picture(std::istream& file, const std::vector<Material*>& materials);
 
 protected:
-	void Render() const;
+	void Draw() const;
 
 	void Print(unsigned int level) const
 	{

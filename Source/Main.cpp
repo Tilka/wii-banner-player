@@ -32,11 +32,14 @@ distribution.
 #include <sstream>
 #include <string>
 
+#include <GL/glew.h>
+
 #include "WiiBanner.h"
 
+//#include <SFML/System.hpp>
 #include <SFML/Window.hpp>
 
-#if defined(_WIN32) && !defined(DEBUG)
+#if defined(_WIN32) && !defined(DEBUG) && 0
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	// hax
@@ -52,6 +55,8 @@ int main(int argc, char* argv[])
 	if (2 == argc)
 		fname = argv[1];
 
+	glewInit();
+
 	WiiBanner banner(fname);
 
 	// print the pane layout
@@ -65,21 +70,23 @@ int main(int argc, char* argv[])
 	glViewport(0, 0, 608, 456);
 
 	//glEnable(GL_DEPTH_TEST);
+    //glDepthMask(GL_TRUE);
+
+	//glEnable(GL_GENERATE_MIPMAP);
+
+	// testing
+	glDepthFunc(GL_LEQUAL);
+
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	//glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_DST_ALPHA);
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
 	glEnable(GL_TEXTURE_2D);
 	glShadeModel(GL_SMOOTH);
 
-	GLuint gltex;
-	glGenTextures(1, &gltex);
+	bool banner_play = true;
 
 	while (window.IsOpened())
 	{
@@ -95,6 +102,31 @@ int main(int argc, char* argv[])
 			case sf::Event::Resized:
 				glViewport(0, 0, ev.Size.Width, ev.Size.Height);
 				break;
+
+			case sf::Event::KeyPressed:
+				switch (ev.Key.Code)
+				{
+					// pause resume playback
+				case sf::Key::Space:
+					banner_play ^= true;
+					break;
+
+					// previous frame
+				case sf::Key::Left:
+					--banner.frame_current;
+					break;
+
+					// next frame
+				case sf::Key::Right:
+					++banner.frame_current;
+					break;
+
+					// restart playback
+				case sf::Key::Back:
+					banner.frame_current = 0;
+					break;
+				}
+				break;
 			}
 		}
 
@@ -103,8 +135,13 @@ int main(int argc, char* argv[])
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glClearColor(0, 0, 0, 1);
 
+		if (!banner_play)
+			banner.SetFrame(banner.frame_current);
+
 		banner.Render();
-		banner.AdvanceFrame();
+
+		if (banner_play)
+			banner.AdvanceFrame();
 
 		window.Display();
 

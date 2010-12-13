@@ -4,6 +4,7 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wii-banner-player", "wii-banner-player.vcxproj", "{D88DD881-FEAC-4C08-82A6-2388571ABF68}"
 	ProjectSection(ProjectDependencies) = postProject
 		{C061A27D-7CA0-4179-9869-672FA04A86A8} = {C061A27D-7CA0-4179-9869-672FA04A86A8}
+		{511DB9A1-57F0-B51E-3253-6A0A5D991DD5} = {511DB9A1-57F0-B51E-3253-6A0A5D991DD5}
 		{0F9CE5F0-4D89-4314-9147-8AAB1B8842ED} = {0F9CE5F0-4D89-4314-9147-8AAB1B8842ED}
 	EndProjectSection
 EndProject
@@ -12,6 +13,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sfml-system", "Externals\sfml\build\vc2010\sfml-system.vcxproj", "{C061A27D-7CA0-4179-9869-672FA04A86A8}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sfml-window", "Externals\sfml\build\vc2010\sfml-window.vcxproj", "{0F9CE5F0-4D89-4314-9147-8AAB1B8842ED}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "glew", "Externals\GLEW\build\vc2010\glew.vcxproj", "{511DB9A1-57F0-B51E-3253-6A0A5D991DD5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -53,6 +56,14 @@ Global
 		{0F9CE5F0-4D89-4314-9147-8AAB1B8842ED}.Release|Win32.Build.0 = Release static|Win32
 		{0F9CE5F0-4D89-4314-9147-8AAB1B8842ED}.Release|x64.ActiveCfg = Release static|x64
 		{0F9CE5F0-4D89-4314-9147-8AAB1B8842ED}.Release|x64.Build.0 = Release static|x64
+		{511DB9A1-57F0-B51E-3253-6A0A5D991DD5}.Debug|Win32.ActiveCfg = Debug|Win32
+		{511DB9A1-57F0-B51E-3253-6A0A5D991DD5}.Debug|Win32.Build.0 = Debug|Win32
+		{511DB9A1-57F0-B51E-3253-6A0A5D991DD5}.Debug|x64.ActiveCfg = Debug|x64
+		{511DB9A1-57F0-B51E-3253-6A0A5D991DD5}.Debug|x64.Build.0 = Debug|x64
+		{511DB9A1-57F0-B51E-3253-6A0A5D991DD5}.Release|Win32.ActiveCfg = Release|Win32
+		{511DB9A1-57F0-B51E-3253-6A0A5D991DD5}.Release|Win32.Build.0 = Release|Win32
+		{511DB9A1-57F0-B51E-3253-6A0A5D991DD5}.Release|x64.ActiveCfg = Release|x64
+		{511DB9A1-57F0-B51E-3253-6A0A5D991DD5}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

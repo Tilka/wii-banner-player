@@ -23,9 +23,6 @@ distribution.
 
 #include "Pane.h"
 
-// TODO: put opengl code elsewhere
-#include <gl/gl.h>
-
 Pane::Pane(std::istream& file)
 {
 	char pane_name[0x11] = {}; // name in ASCII.
@@ -85,9 +82,16 @@ void PaneHolder::SetFrame(FrameNumber frame)
 	});
 }
 
-void Pane::RenderStart() const
+void Pane::Render() const
 {
+	if (!visible)
+		return;
+
 	glPushMatrix();
+
+	// testing
+	//glPixelTransferf(GL_ALPHA_SCALE, 0.5f);
+	//glPixelTransferf(GL_BLUE_SCALE, 0.0f);
 
 	// position
 	glTranslatef(translate.x, translate.y, translate.z);
@@ -102,24 +106,32 @@ void Pane::RenderStart() const
 
 	// origin
 	glTranslatef(-width / 2 * (origin % 3), -height / 2 * (origin / 3), 0);
-}
+	//glTranslatef(-width / 2, -height / 2, 0);
 
-void Pane::RenderEnd() const
-{
+	Draw();
+
 	glPopMatrix();
 }
 
-void PaneHolder::Render() const
+PaneHolder::PaneHolder(std::istream& file)
+	: Pane(file)
 {
-	if (!visible)
-		return;
+	//glGenFramebuffers(1, &framebuffer);
+}
 
-	RenderStart();
+PaneHolder::~PaneHolder()
+{
+	//glDeleteFramebuffers(1, &framebuffer);
+}
+
+void PaneHolder::Draw() const
+{
+	//glBindFramebuffer(GL_DRAW_BUFFER, framebuffer);
 
 	ForEach(panes, [](const Pane* pane)
 	{
 		pane->Render();
 	});
 
-	RenderEnd();
+	//glBindFramebuffer(GL_DRAW_BUFFER, 0);
 }

@@ -74,6 +74,8 @@ struct KeyFrame
 class Animator
 {
 public:
+	virtual ~Animator() {}
+
 	virtual void SetFrame(FrameNumber frame);
 
 	Animator& operator+=(const Animator& rhs);

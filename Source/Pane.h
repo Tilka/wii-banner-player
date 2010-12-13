@@ -28,9 +28,14 @@ distribution.
 
 #include "Animator.h"
 
+// TODO: put opengl code elsewhere
+#include <gl/glew.h>
+
 class Pane : public Animator
 {
 public:
+	virtual ~Pane() {}
+
 	Pane(std::istream& file);
 
 public:
@@ -50,14 +55,13 @@ public:
 
 	float width, height;
 
-	virtual void Render() const = 0;
-
-	void RenderStart() const;
-	void RenderEnd() const;
+	void Render() const;
 
 	virtual void Print(unsigned int level) const = 0;
 
 private:
+	virtual void Draw() const = 0;
+
 	void ProcessRLPA(u8 index, float value);
 	void ProcessRLVI(bool value);
 };
@@ -65,12 +69,13 @@ private:
 class PaneHolder : public Pane
 {
 public:
-	PaneHolder(std::istream& file) : Pane(file) {}
+	PaneHolder(std::istream& file);
+	~PaneHolder();
 
 	void SetFrame(FrameNumber frame);
 
 //protected:
-	void Render() const;
+	void Draw() const;
 
 	void Print(unsigned int level) const
 	{
@@ -83,6 +88,8 @@ public:
 	}
 
 	std::list<Pane*> panes;
+
+	GLuint framebuffer;
 };
 
 #endif

@@ -48,11 +48,8 @@ Picture::Picture(std::istream& file, const std::vector<Material*>& materials)
 	}
 }
 
-void Picture::Render() const
+void Picture::Draw() const
 {
-	if (!visible)
-		return;
-
 	// TODO: LOL
 	//if ("PicTico" != name)
 		//return;
@@ -60,8 +57,6 @@ void Picture::Render() const
 	// testing
 	if (alpha < 128)
 		return;
-
-	RenderStart();
 
 	material->Bind();
 
@@ -102,6 +97,4 @@ void Picture::Render() const
 	glVertex2f(0.f, 0.f);
 
 	glEnd();
-
-	RenderEnd();
 }

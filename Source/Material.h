@@ -51,7 +51,7 @@ public:
 	}
 
 //protected:
-	const Texture* texture;
+	Texture* texture;
 
 	struct
 	{
@@ -64,6 +64,9 @@ public:
 	u8 wrap_s, wrap_t;
 
 	u8 color[4];
+
+	// TODO: probably temporary
+	u8 palette_index;
 };
 
 #endif
