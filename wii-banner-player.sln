@@ -1,0 +1,60 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wii-banner-player", "wii-banner-player.vcxproj", "{D88DD881-FEAC-4C08-82A6-2388571ABF68}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C061A27D-7CA0-4179-9869-672FA04A86A8} = {C061A27D-7CA0-4179-9869-672FA04A86A8}
+		{0F9CE5F0-4D89-4314-9147-8AAB1B8842ED} = {0F9CE5F0-4D89-4314-9147-8AAB1B8842ED}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dolphin-emu", "Externals\dolphin-emu\dolphin-emu.vcxproj", "{E7F1B4C3-C0E0-48AA-BAC1-8F757BD49339}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sfml-system", "Externals\sfml\build\vc2010\sfml-system.vcxproj", "{C061A27D-7CA0-4179-9869-672FA04A86A8}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sfml-window", "Externals\sfml\build\vc2010\sfml-window.vcxproj", "{0F9CE5F0-4D89-4314-9147-8AAB1B8842ED}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Debug|x64 = Debug|x64
+		Release|Win32 = Release|Win32
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D88DD881-FEAC-4C08-82A6-2388571ABF68}.Debug|Win32.ActiveCfg = Debug|Win32
+		{D88DD881-FEAC-4C08-82A6-2388571ABF68}.Debug|Win32.Build.0 = Debug|Win32
+		{D88DD881-FEAC-4C08-82A6-2388571ABF68}.Debug|x64.ActiveCfg = Debug|x64
+		{D88DD881-FEAC-4C08-82A6-2388571ABF68}.Debug|x64.Build.0 = Debug|x64
+		{D88DD881-FEAC-4C08-82A6-2388571ABF68}.Release|Win32.ActiveCfg = Release|Win32
+		{D88DD881-FEAC-4C08-82A6-2388571ABF68}.Release|Win32.Build.0 = Release|Win32
+		{D88DD881-FEAC-4C08-82A6-2388571ABF68}.Release|x64.ActiveCfg = Release|x64
+		{D88DD881-FEAC-4C08-82A6-2388571ABF68}.Release|x64.Build.0 = Release|x64
+		{E7F1B4C3-C0E0-48AA-BAC1-8F757BD49339}.Debug|Win32.ActiveCfg = Debug|Win32
+		{E7F1B4C3-C0E0-48AA-BAC1-8F757BD49339}.Debug|Win32.Build.0 = Debug|Win32
+		{E7F1B4C3-C0E0-48AA-BAC1-8F757BD49339}.Debug|x64.ActiveCfg = Debug|x64
+		{E7F1B4C3-C0E0-48AA-BAC1-8F757BD49339}.Debug|x64.Build.0 = Debug|x64
+		{E7F1B4C3-C0E0-48AA-BAC1-8F757BD49339}.Release|Win32.ActiveCfg = Release|Win32
+		{E7F1B4C3-C0E0-48AA-BAC1-8F757BD49339}.Release|Win32.Build.0 = Release|Win32
+		{E7F1B4C3-C0E0-48AA-BAC1-8F757BD49339}.Release|x64.ActiveCfg = Release|x64
+		{E7F1B4C3-C0E0-48AA-BAC1-8F757BD49339}.Release|x64.Build.0 = Release|x64
+		{C061A27D-7CA0-4179-9869-672FA04A86A8}.Debug|Win32.ActiveCfg = Debug static|Win32
+		{C061A27D-7CA0-4179-9869-672FA04A86A8}.Debug|Win32.Build.0 = Debug static|Win32
+		{C061A27D-7CA0-4179-9869-672FA04A86A8}.Debug|x64.ActiveCfg = Debug static|x64
+		{C061A27D-7CA0-4179-9869-672FA04A86A8}.Debug|x64.Build.0 = Debug static|x64
+		{C061A27D-7CA0-4179-9869-672FA04A86A8}.Release|Win32.ActiveCfg = Release static|Win32
+		{C061A27D-7CA0-4179-9869-672FA04A86A8}.Release|Win32.Build.0 = Release static|Win32
+		{C061A27D-7CA0-4179-9869-672FA04A86A8}.Release|x64.ActiveCfg = Release static|x64
+		{C061A27D-7CA0-4179-9869-672FA04A86A8}.Release|x64.Build.0 = Release static|x64
+		{0F9CE5F0-4D89-4314-9147-8AAB1B8842ED}.Debug|Win32.ActiveCfg = Debug static|Win32
+		{0F9CE5F0-4D89-4314-9147-8AAB1B8842ED}.Debug|Win32.Build.0 = Debug static|Win32
+		{0F9CE5F0-4D89-4314-9147-8AAB1B8842ED}.Debug|x64.ActiveCfg = Debug static|x64
+		{0F9CE5F0-4D89-4314-9147-8AAB1B8842ED}.Debug|x64.Build.0 = Debug static|x64
+		{0F9CE5F0-4D89-4314-9147-8AAB1B8842ED}.Release|Win32.ActiveCfg = Release static|Win32
+		{0F9CE5F0-4D89-4314-9147-8AAB1B8842ED}.Release|Win32.Build.0 = Release static|Win32
+		{0F9CE5F0-4D89-4314-9147-8AAB1B8842ED}.Release|x64.ActiveCfg = Release static|x64
+		{0F9CE5F0-4D89-4314-9147-8AAB1B8842ED}.Release|x64.Build.0 = Release static|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
