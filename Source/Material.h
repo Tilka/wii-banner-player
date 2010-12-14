@@ -43,7 +43,10 @@ public:
 
 	void ProcessRLTS(u8 index, float value);
 
-	void Material::AdjustTexCoords(TexCoord tc[]) const;
+	void AdjustTexCoords(TexCoord tc[]) const;
+	
+	const s16* GetColorFore() const { return color_fore; }
+	const s16* GetColorBack() const { return color_back; }
 
 	~Material()
 	{
@@ -63,7 +66,10 @@ public:
 	u16 tex_index;
 	u8 wrap_s, wrap_t;
 
-	u8 color[4];
+	s16 color_fore[4];
+	s16 color_back[4];
+	s16 color_tevreg3[4];	// wtf is a reg3
+	u8 color_tevk[4][4];	// wtf is s tevk1,tevk2 etc...
 
 	// TODO: probably temporary
 	u8 palette_index;

@@ -30,16 +30,11 @@ distribution.
 Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	: texture(NULL)
 {
-	memset(color, 255, 4);
-
 	wrap_s = 0;
 	wrap_t = 0;
 
 	char material_name[21] = {};
-	s16 fore_color[4];
-	s16 back_color[4];
-	s16 tevREG3_color[4];
-	u32 tev_kcolor[4];
+
 
 	union
 	{
@@ -65,10 +60,10 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	} flags;
 
 	file.read(material_name, 20);
-	ReadBEArray(file, fore_color, 4);
-	ReadBEArray(file, back_color, 4);
-	ReadBEArray(file, tevREG3_color, 4);
-	ReadBEArray(file, tev_kcolor, 4);
+	ReadBEArray(file, color_fore, 4);
+	ReadBEArray(file, color_back, 4);
+	ReadBEArray(file, color_tevreg3, 4);
+	ReadBEArray(file, (u8*)color_tevk, sizeof(color_tevk));
 	file >> BE >> flags.hex;
 
 	name = material_name;
@@ -125,7 +120,7 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	// color
 	if (flags.ua5)
 	{
-		ReadBEArray(file, color, 4);
+		//ReadBEArray(file, color, 4);
 
 		//std::cout << "color: " << (int)color[0] << ',' << (int)color[1] << ',' << (int)color[2] << '\n';
 	}
@@ -143,8 +138,8 @@ void Material::Bind() const
 {
 	if (texture)
 		texture->Bind(0);
-	//else
-		//std::cout << "Material has no texture: " << name << '\n';
+	else
+		glBindTexture(GL_TEXTURE_2D, 0);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, SAFE_ARRAY_VALUE(wraps, wrap_s));
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, SAFE_ARRAY_VALUE(wraps, wrap_t));

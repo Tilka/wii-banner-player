@@ -25,6 +25,13 @@ distribution.
 
 #include <gl/gl.h>
 
+// assumes u8s, takes any type to avoid multiple conversions
+template <typename C1, typename C2>
+inline u8 MultiplyColors(C1 c1, C2 c2)
+{
+	return (u16)c1 * c2 / 0xff;
+}
+
 Picture::Picture(std::istream& file, const std::vector<Material*>& materials)
 	: Pane(file)
 	, material(NULL)
@@ -64,12 +71,18 @@ void Picture::Draw() const
 	// testing stuff
 	u8 vc[4][4];
 	memcpy(vc, vertex_colors, 4 * 4);
-	
-	for (int i = 0; i != 4; ++i)
-		vc[i][3] = ((u16)alpha * vc[i][3]) / 255;
 
-	// TODO: vertex_colors/tex_coords corners may be wrong
-	// TODO: vertex_colors may need to be byte swapped
+	const s16* const mat_back = material->GetColorBack();
+
+	//std::cout << "mat_back[3]: " << mat_back[3] << '\n';
+	
+	for (int vert = 0; vert != 4; ++vert)
+	{
+		vc[vert][3] = MultiplyColors(vc[vert][3], alpha);
+		
+		for (int c = 0; c != 4; ++c)
+			vc[vert][c] = MultiplyColors(vc[vert][c], mat_back[c]);
+	}
 
 	glBegin(GL_POLYGON);
 
