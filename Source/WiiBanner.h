@@ -47,16 +47,21 @@ public:
 
 	void AdvanceFrame();
 
-//private:
-	u8 centered; // 1 if layout is drawn from center
+	u32 GetWidth() const { return (u32)width; }
+	u32 GetHeight() const { return (u32)height; }
+
+	FrameNumber frame_current;
+
+private:
 	float width, height;
+	u8 centered;
 
 	std::vector<Texture*> textures;
 	std::vector<Material*> materials;
 
 	std::vector<Pane*> panes;
 
-	FrameNumber frame_current, frame_loop_start, frame_loop_end;
+	FrameNumber frame_loop_start, frame_loop_end;
 };
 
 #endif

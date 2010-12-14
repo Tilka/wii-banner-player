@@ -50,25 +50,25 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 #else
 int main(int argc, char* argv[])
 {
-#endif
-	sf::Window window(sf::VideoMode(608, 456, 32), "Wii Banner Player");
-	
+#endif	
 	std::string fname = "opening.bnr";	// just so i can test without setting params
 	if (2 == argc)
 		fname = argv[1];
 
-	glewInit();
+	// TODO: parse brlyt file separate from loading texture,
+	// to get width/height without needing to have a window open first
+	sf::Window window(sf::VideoMode(608, 456, 32), "Wii Banner Player");
+
+	//glewInit();
 
 	WiiBanner banner(fname);
 
-	window.Show(true);
+	//window.SetSize(banner.GetWidth(), banner.GetHeight());
 
-	glViewport(0, 0, 608, 456);
+	glViewport(0, 0, banner.GetWidth(), banner.GetHeight());
 
-	//glEnable(GL_DEPTH_TEST);
+	glEnable(GL_DEPTH_TEST);
     //glDepthMask(GL_TRUE);
-
-	//glEnable(GL_GENERATE_MIPMAP);
 
 	// testing
 	glDepthFunc(GL_LEQUAL);
@@ -96,8 +96,24 @@ int main(int argc, char* argv[])
 				break;
 
 			case sf::Event::Resized:
-				glViewport(0, 0, ev.Size.Width, ev.Size.Height);
-				break;
+				{
+					const float
+						banner_aspect = (float)banner.GetWidth() / (float)banner.GetHeight(),
+						window_aspect = (float)ev.Size.Width / (float)ev.Size.Height;
+
+					if (banner_aspect > window_aspect)
+					{
+						const GLsizei h = GLsizei(ev.Size.Width / banner_aspect);
+						glViewport(0, (ev.Size.Height - h) / 2, ev.Size.Width, h);
+					}
+					else
+					{
+						const GLsizei w = GLsizei(ev.Size.Height * banner_aspect);
+						glViewport((ev.Size.Width - w) / 2, 0, w, ev.Size.Height);
+					}
+
+					break;
+				}
 
 			case sf::Event::KeyPressed:
 				switch (ev.Key.Code)

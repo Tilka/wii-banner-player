@@ -229,7 +229,9 @@ FrameNumber LoadAnimators(std::istream& file, F func)
 WiiBanner::WiiBanner(const std::string& path)
 	: frame_current(0)
 	, frame_loop_start(0)
-	, frame_loop_end(300)	// hax
+	, frame_loop_end(0)
+	, width(1), height(1)	// 1 is stupid, but no /0 errors this way :p
+	, centered(0)
 {
 	std::map<std::string, Animator*> pane_animator_map;
 	std::map<std::string, Material*> mate_animator_map;

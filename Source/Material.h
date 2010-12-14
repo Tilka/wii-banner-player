@@ -66,6 +66,7 @@ public:
 	u16 tex_index;
 	u8 wrap_s, wrap_t;
 
+	// why are these 2 byte values?
 	s16 color_fore[4];
 	s16 color_back[4];
 	s16 color_tevreg3[4];	// wtf is a reg3

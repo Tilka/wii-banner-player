@@ -60,10 +60,13 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	} flags;
 
 	file.read(material_name, 20);
+
+	// read colors
 	ReadBEArray(file, color_fore, 4);
 	ReadBEArray(file, color_back, 4);
 	ReadBEArray(file, color_tevreg3, 4);
 	ReadBEArray(file, (u8*)color_tevk, sizeof(color_tevk));
+
 	file >> BE >> flags.hex;
 
 	name = material_name;
@@ -84,6 +87,11 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 
 	scale.x = 1;
 	scale.y = 1;
+
+	translate.x = 0;
+	translate.x = 0;
+
+	rotate = 0;
 
 	// srt
 	for (u32 i = 0; i != flags.tex_srt; ++i)
