@@ -54,7 +54,7 @@ public:
 	std::vector<Texture*> textures;
 	std::vector<Material*> materials;
 
-	std::list<Pane*> panes;
+	std::vector<Pane*> panes;
 
 	FrameNumber frame_current, frame_loop_start, frame_loop_end;
 };

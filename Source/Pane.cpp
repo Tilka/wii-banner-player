@@ -96,42 +96,29 @@ void Pane::Render() const
 	// position
 	glTranslatef(translate.x, translate.y, translate.z);
 
-	// rotations
-	glRotatef(rotate.x, 1.f, 0.f, 0.f);
-	glRotatef(rotate.y, 0.f, 1.f, 0.f);
-	glRotatef(rotate.z, 0.f, 0.f, 1.f);
-
 	// scale
 	glScalef(scale.x, scale.y, 1.f);
 
 	// origin
 	glTranslatef(-width / 2 * (origin % 3), -height / 2 * (origin / 3), 0);
-	//glTranslatef(-width / 2, -height / 2, 0);
+
+	// rotations
+	glRotatef(rotate.x, 1.f, 0.f, 0.f);
+	glRotatef(rotate.y, 0.f, 1.f, 0.f);
+	glRotatef(rotate.z, 0.f, 0.f, 1.f);
 
 	Draw();
 
 	glPopMatrix();
 }
 
-PaneHolder::PaneHolder(std::istream& file)
-	: Pane(file)
-{
-	//glGenFramebuffers(1, &framebuffer);
-}
-
-PaneHolder::~PaneHolder()
-{
-	//glDeleteFramebuffers(1, &framebuffer);
-}
-
 void PaneHolder::Draw() const
 {
-	//glBindFramebuffer(GL_DRAW_BUFFER, framebuffer);
+	// undo origin
+	glTranslatef(width / 2 * (origin % 3), height / 2 * (origin / 3), 0);
 
 	ForEach(panes, [](const Pane* pane)
 	{
 		pane->Render();
 	});
-
-	//glBindFramebuffer(GL_DRAW_BUFFER, 0);
 }

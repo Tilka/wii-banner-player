@@ -73,6 +73,8 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 
 	name = material_name;
 
+	std::cout << "\tmaterial: " << name << '\n';
+
 	// texture reference
 	// TODO: only single reference supported
 	for (u32 i = 0; i != flags.texture; ++i)
@@ -85,12 +87,16 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 			texture = textures[tex_index];
 	}
 
+	scale.x = 1;
+	scale.y = 1;
+
 	// srt
 	for (u32 i = 0; i != flags.tex_srt; ++i)
 	{
 		file >> BE >> translate.x >> translate.y >> rotate >> scale.x >> scale.y;
 
-		//std::cout << "XTrans: " << XTrans << " YTrans: " << YTrans << " Rotate: " << Rotate << '\n';
+		std::cout << "XTrans: " << translate.x << " YTrans: " << translate.y << " Rotate: " << rotate
+			<< " XScale: " << scale.x << " YScale: " << scale.y << '\n';
 	}
 
 	// coord
@@ -165,9 +171,9 @@ void Material::AdjustTexCoords(TexCoord tc[]) const
 {
 	for (int i = 0; i != 4; ++i)
 	{
-		tc[i].s = (tc[i].s + translate.x);// * scale.x;
-		tc[i].t = (tc[i].t + translate.y);// * scale.y;
+		tc[i].s = (tc[i].s + translate.x) * scale.x;
+		tc[i].t = (tc[i].t + translate.y) * scale.y;
 	}
 
-	//glScalef(scale.x, scale.y, 1.f);
+	//glScalef(1 / scale.x, 1 / scale.y, 1.f);
 }

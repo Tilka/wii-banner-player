@@ -26,6 +26,8 @@ distribution.
 
 #include "Types.h"
 
+#include <vector>
+
 #include "Animator.h"
 
 // TODO: put opengl code elsewhere
@@ -69,8 +71,7 @@ private:
 class PaneHolder : public Pane
 {
 public:
-	PaneHolder(std::istream& file);
-	~PaneHolder();
+	PaneHolder::PaneHolder(std::istream& file) : Pane(file) {}
 
 	void SetFrame(FrameNumber frame);
 
@@ -87,7 +88,7 @@ public:
 		});
 	}
 
-	std::list<Pane*> panes;
+	std::vector<Pane*> panes;
 
 	GLuint framebuffer;
 };

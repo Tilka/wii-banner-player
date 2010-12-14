@@ -208,7 +208,7 @@ FrameNumber LoadAnimators(std::istream& file, F func, FrameNumber frame_offset =
 
 								file >> BE >> frame >> value >> blend;
 
-								if (animator.name == "Brawl")
+								if (animator.name == "mario")
 								std::cout << "\t\t\tcoord: frame: " << frame << " value: " << value << " blend: " << blend << '\n';
 
 								// add a new keyframe to the latest animator
@@ -219,13 +219,13 @@ FrameNumber LoadAnimators(std::istream& file, F func, FrameNumber frame_offset =
 						{
 							while (coord_count--)
 							{
-								u16 value;
+								u8 value, blend;
 				
-								file >> BE >> frame >> value;
+								file >> BE >> frame >> value >> blend;
 								file.seekg(2, std::ios::cur);
 
-								if (animator.name == "Brawl")
-								std::cout << "\t\t\tcoord: frame: " << frame << " value: " << value << '\n';
+								if (animator.name == "mario")
+								std::cout << "\t\t\tcoord: frame: " << frame << " value: " << (int)value << " " << (int)blend << '\n';
 
 								// add a new keyframe to the latest animator
 								animator.key_frames[KeyFrameType(type, index)][frame + frame_offset] = KeyFrame(value, 0);
@@ -249,10 +249,10 @@ WiiBanner::WiiBanner(const std::string& path)
 	, frame_loop_end(300)	// hax
 {
 	std::map<std::string, Animator*> pane_animator_map;
-	std::map<std::string, size_t> material_animator_map;
+	std::map<std::string, Material*> mate_animator_map;
 
-	PaneHolder* last_pane_holder;
-	std::stack<std::list<Pane*>*> pane_stack;
+	PaneHolder* last_pane;
+	std::stack<std::vector<Pane*>*> pane_stack;
 	pane_stack.push(&panes);
 
 	// bunch of crap to parse/decompress archives multiple times
@@ -345,16 +345,17 @@ WiiBanner::WiiBanner(const std::string& path)
 
 			ReadOffsetList(file, count, header.start, [&]
 			{
-				materials.push_back(new Material(file, textures));
-				material_animator_map[materials.back()->name] = materials.size() - 1;
+				Material* const mate = new Material(file, textures);
+				materials.push_back(mate);
+				mate_animator_map[materials.back()->name] = mate;
 			});
 
 			std::cout << "\tloaded " << materials.size() << " materials\n";
 		}
 		else if (header.magic == "pan1")
 		{
-			pane_stack.top()->push_back(last_pane_holder = new PaneHolder(file));
-			pane_animator_map[last_pane_holder->name] = last_pane_holder;
+			pane_stack.top()->push_back(last_pane = new PaneHolder(file));
+			pane_animator_map[last_pane->name] = last_pane;
 		}
 		else if (header.magic == "pic1")
 		{
@@ -364,7 +365,7 @@ WiiBanner::WiiBanner(const std::string& path)
 		}
 		else if (header.magic == "pas1")
 		{
-			pane_stack.push(&last_pane_holder->panes);
+			pane_stack.push(&last_pane->panes);
 		}
 		else if (header.magic == "pae1")
 		{
@@ -377,16 +378,13 @@ WiiBanner::WiiBanner(const std::string& path)
 	{
 		// TODO: some safety checks
 
-		Animator* anim = NULL;
-		if (an.is_material)
-			anim = materials[material_animator_map.find(an.name)->second];
-		else
-			anim = pane_animator_map.find(an.name)->second;
+		Animator* const anim = an.is_material ?
+			mate_animator_map[an.name] :
+			pane_animator_map[an.name];
 
-		*anim += an;
+		if (anim)
+			*anim += an;
 	};
-
-	//std::cin.get();
 
 	auto const brlan_start_offset = banner_arc.GetFileOffset("arc/anim/Banner_Start.brlan");
 	auto const brlan_loop_offset = banner_arc.GetFileOffset("arc/anim/Banner_Loop.brlan");
@@ -394,9 +392,30 @@ WiiBanner::WiiBanner(const std::string& path)
 	file.seekg(brlan_start_offset, std::ios::beg);
 	frame_loop_start = LoadAnimators(file, add_animators);
 	file.seekg(brlan_loop_offset, std::ios::beg);
-	frame_loop_end = frame_loop_start + LoadAnimators(file, add_animators);
+	frame_loop_end = frame_loop_start + LoadAnimators(file, add_animators, frame_loop_start);
 
 	SetFrame(frame_current);
+
+	// print the pane layout
+	ForEach(panes, [&](const Pane* pane)
+	{
+		pane->Print(0);
+	});
+
+	//std::string pname;
+	//while (std::getline(std::cin, pname) && pname.size())
+	//{
+	//	Pane* pane = (Pane*)pane_animator_map[pname];
+	//	if (!pane)
+	//		continue;
+
+	//	std::cout << "x,y:\t\t" << pane->translate.x << ", " << pane->translate.y << '\n';
+	//	std::cout << "w,h:\t\t" << pane->width << ", " << pane->height << '\n';
+	//	std::cout << "scale x,y:\t" << pane->scale.x << ", " << pane->scale.y << '\n';
+	//	std::cout << "origin:\t\t" << (pane->origin % 3) << ", " << (pane->origin / 3) << '\n';
+
+	//	std::cout << '\n';
+	//}
 }
 
 void WiiBanner::SetFrame(FrameNumber frame)
@@ -415,17 +434,12 @@ void WiiBanner::SetFrame(FrameNumber frame)
 void WiiBanner::Render()
 {
 	glLoadIdentity();
-	//glOrtho(-width, 0, -height, 0, -1000, 1000);
+	gluOrtho2D(-width, 0, -height, 0);
 
-	glOrtho(-640, 0, -480, 0, -1000, 1000);
+	if (centered)
+		glTranslatef(-width / 2, -height / 2, 0);
 
-	//glOrtho(-608/2, 608/2, -456/2, 456/2, -1000, 1000);
-
-	//if (centered)
-		//glTranslatef(width / 2, height / 2, 0);
-
-	// TODO: HAX this line should not be needed!!!
-	//glTranslatef(width / 2, height / 2, 0);
+	//std::cout << (int)centered << '\n';
 
 	// usually there is only one root pane, probably always
 	ForEach(panes, [&](Pane* pane)

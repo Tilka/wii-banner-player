@@ -59,12 +59,6 @@ int main(int argc, char* argv[])
 
 	WiiBanner banner(fname);
 
-	// print the pane layout
-	ForEach(banner.panes, [&](const Pane* pane)
-	{
-		pane->Print(0);
-	});
-
 	window.Show(true);
 
 	glViewport(0, 0, 608, 456);
@@ -79,6 +73,9 @@ int main(int argc, char* argv[])
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -113,12 +110,12 @@ int main(int argc, char* argv[])
 
 					// previous frame
 				case sf::Key::Left:
-					--banner.frame_current;
+					banner.frame_current -= 1 + 4 * window.GetInput().IsKeyDown(sf::Key::LShift);
 					break;
 
 					// next frame
 				case sf::Key::Right:
-					++banner.frame_current;
+					banner.frame_current += 1 + 4 * window.GetInput().IsKeyDown(sf::Key::LShift);
 					break;
 
 					// restart playback

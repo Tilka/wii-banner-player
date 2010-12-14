@@ -24,7 +24,6 @@ distribution.
 #ifndef _ANIMATOR_H_
 #define _ANIMATOR_H_
 
-#include <list>
 #include <map>
 
 #include "Types.h"
