@@ -47,6 +47,9 @@ protected:
 	u8 vertex_colors[4][4];
 
 	u16 mat_index;
+
+private:
+	void ProcessRLVC(u8 index, float value);
 };
 
 #endif

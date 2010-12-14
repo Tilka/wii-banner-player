@@ -75,7 +75,7 @@ void Animator::SetFrame(FrameNumber frame)
 			break;
 
 		case RLVC:
-			ProcessRLVC();
+			ProcessRLVC(kf.first.index, value);
 			break;
 
 		case RLMC:

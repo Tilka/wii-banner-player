@@ -208,7 +208,7 @@ FrameNumber LoadAnimators(std::istream& file, F func, FrameNumber frame_offset =
 
 								file >> BE >> frame >> value >> blend;
 
-								if (animator.name == "mario")
+								if (animator.name == "PicLogoShine")
 								std::cout << "\t\t\tcoord: frame: " << frame << " value: " << value << " blend: " << blend << '\n';
 
 								// add a new keyframe to the latest animator
@@ -219,13 +219,13 @@ FrameNumber LoadAnimators(std::istream& file, F func, FrameNumber frame_offset =
 						{
 							while (coord_count--)
 							{
-								u8 value, blend;
+								u16 value;
 				
-								file >> BE >> frame >> value >> blend;
+								file >> BE >> frame >> value;
 								file.seekg(2, std::ios::cur);
 
-								if (animator.name == "mario")
-								std::cout << "\t\t\tcoord: frame: " << frame << " value: " << (int)value << " " << (int)blend << '\n';
+								if (animator.name == "PicLogoShine")
+								std::cout << "\t\t\tcoord: frame: " << frame << " value: " << (int)value << '\n';
 
 								// add a new keyframe to the latest animator
 								animator.key_frames[KeyFrameType(type, index)][frame + frame_offset] = KeyFrame(value, 0);

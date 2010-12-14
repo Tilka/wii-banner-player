@@ -50,14 +50,6 @@ Picture::Picture(std::istream& file, const std::vector<Material*>& materials)
 
 void Picture::Draw() const
 {
-	// TODO: LOL
-	//if ("PicTico" != name)
-		//return;
-
-	// testing
-	if (alpha < 128)
-		return;
-
 	material->Bind();
 
 	TexCoord tc[4];
@@ -72,8 +64,9 @@ void Picture::Draw() const
 	// testing stuff
 	u8 vc[4][4];
 	memcpy(vc, vertex_colors, 4 * 4);
-	//for (int i = 0; i != 16; ++i)
-	//	((u8*)vc)[i] *= (float)alpha / 255;
+	
+	for (int i = 0; i != 4; ++i)
+		vc[i][3] = ((u16)alpha * vc[i][3]) / 255;
 
 	// TODO: vertex_colors/tex_coords corners may be wrong
 	// TODO: vertex_colors may need to be byte swapped
@@ -97,4 +90,12 @@ void Picture::Draw() const
 	glVertex2f(0.f, 0.f);
 
 	glEnd();
+}
+
+void Picture::ProcessRLVC(u8 index, float value)
+{
+	if (index < 16)
+		((u8*)vertex_colors)[index] = (u8)value;
+	else if (16 == index)
+		alpha = (u8)value;
 }
