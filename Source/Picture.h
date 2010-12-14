@@ -49,7 +49,7 @@ protected:
 	u16 mat_index;
 
 private:
-	void ProcessRLVC(u8 index, float value);
+	void ProcessRLVC(u8 index, u8 value);
 };
 
 #endif

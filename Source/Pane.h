@@ -65,7 +65,7 @@ private:
 	virtual void Draw() const = 0;
 
 	void ProcessRLPA(u8 index, float value);
-	void ProcessRLVI(bool value);
+	void ProcessRLVI(u8 value);
 };
 
 class PaneHolder : public Pane

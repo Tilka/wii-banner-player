@@ -39,7 +39,9 @@ distribution.
 //#include <SFML/System.hpp>
 #include <SFML/Window.hpp>
 
-#if defined(_WIN32) && !defined(DEBUG) && 0
+#define NO_CONSOLE 0
+
+#if defined(_WIN32) && !defined(DEBUG) && NO_CONSOLE
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	// hax

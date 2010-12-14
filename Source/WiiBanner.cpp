@@ -50,7 +50,7 @@ inline std::istream& operator>>(std::istream& lhs, SectionHeader& rhs)
 }
 
 // seek past a section
-inline std::istream& operator+=(std::istream& lhs, SectionHeader& rhs)
+inline std::istream& operator+=(std::istream& lhs, const SectionHeader& rhs)
 {
 	lhs.seekg(rhs.start + rhs.size, std::ios::beg);
 
@@ -79,9 +79,8 @@ void ReadOffsetList(std::istream& file, u32 count, std::streamoff origin, F func
 
 // load keyframes from a brlan file
 // func is a callback func which is passed all the read Animators
-// TODO: remove the frame_offset, pretty sure it's not needed
 template <typename F>
-FrameNumber LoadAnimators(std::istream& file, F func, FrameNumber frame_offset = 0)
+FrameNumber LoadAnimators(std::istream& file, F func)
 {
 	const std::streamoff file_start = file.tellg();
 
@@ -126,6 +125,7 @@ FrameNumber LoadAnimators(std::istream& file, F func, FrameNumber frame_offset =
 				>> padding >> num_timgs >> num_entries;
 
 			// extra padding if bit 25 is set, idk why
+			// TODO: never true
 			if (flags & (1 << 25))
 			{
 				//file.seekg(4);
@@ -147,10 +147,11 @@ FrameNumber LoadAnimators(std::istream& file, F func, FrameNumber frame_offset =
 
 				char name[21] = {}; // Name of the BRLAN entry. (Must be defined in the BRLYT)
 				u8 num_tags;
+				u8 is_material;
 				u16 offset;	// TODO: not sure if offset
 
 				// read the entry
-				file.read(name, 20) >> BE >> num_tags >> animator.is_material >> offset;
+				file.read(name, 20) >> BE >> num_tags >> is_material >> offset;
 
 				animator.name = name;
 			
@@ -166,76 +167,58 @@ FrameNumber LoadAnimators(std::istream& file, F func, FrameNumber frame_offset =
 					file >> magic >> entry_count;
 					file.seekg(3, std::ios::cur);	// some padding
 
-					u8 type = -1;
+					FRAME_TAG tag = (FRAME_TAG)-1;
 					if (magic == "RLPA")
-						type = RLPA;
+						tag = RLPA;
 					else if (magic == "RLTS")
-						type = RLTS;
+						tag = RLTS;
 					else if (magic == "RLVI")
-						type = RLVI;
+						tag = RLVI;
 					else if (magic == "RLVC")
-						type = RLVC;
+						tag = RLVC;
 					else if (magic == "RLMC")
-						type = RLMC;
+						tag = RLMC;
 					else if (magic == "RLTP")
-						type = RLTP;
+						tag = RLTP;
 
 					std::cout << "\ttag: ";
 					std::cout.write((char*)magic.data, 4) << '\n';
 
 					ReadOffsetList(file, entry_count, origin, [&]
 					{
-						u8 unk;
+						u8 type;
 						u8 index;
 						u16 data_type; // Every case has been 0x0200 // 0x0100 for pairs
-						u16 coord_count; // How many coordinates.
+						u16 frame_count; // How many frames
 						u16 pad1; // All cases I've seen is zero.
 						u32 offset; // Offset to tag data
 
-						file >> BE >> unk >> index >> data_type
-							>> coord_count >> pad1 >> offset;
+						file >> BE >> type >> index >> data_type
+							>> frame_count >> pad1 >> offset;
 
-						std::cout << "\t\ttagentry: index: " << (int)index << " coord_count: " << coord_count << '\n';
+						std::cout << "\t\ttagentry: index: " << (int)index << " frame_count: " << frame_count << '\n';
 
-						float frame;
+						const FrameType frame_type(tag, type, index);
 
-						// read coords
-						if (0x0200 == data_type)
+						switch (data_type)
 						{
-							while (coord_count--)
-							{
-								float value, blend;
+						case 0x0100:
+							animator.static_frames[frame_type].Load(file, frame_count);
+							break;
 
-								file >> BE >> frame >> value >> blend;
+						case 0x0200:
+							animator.key_frames[frame_type].Load(file, frame_count);
+							break;
 
-								if (animator.name == "PicLogoShine")
-								std::cout << "\t\t\tcoord: frame: " << frame << " value: " << value << " blend: " << blend << '\n';
-
-								// add a new keyframe to the latest animator
-								animator.key_frames[KeyFrameType(type, index)][frame + frame_offset] = KeyFrame(value, blend);
-							}
-						}
-						else
-						{
-							while (coord_count--)
-							{
-								u16 value;
-				
-								file >> BE >> frame >> value;
-								file.seekg(2, std::ios::cur);
-
-								if (animator.name == "PicLogoShine")
-								std::cout << "\t\t\tcoord: frame: " << frame << " value: " << (int)value << '\n';
-
-								// add a new keyframe to the latest animator
-								animator.key_frames[KeyFrameType(type, index)][frame + frame_offset] = KeyFrame(value, 0);
-							}
+						default:
+							std::cout << "UNKNOWN FRAME DATA TYPE!!\n";
+							break;
 						}
 					});
 				});
 
 				// pass the read animator to the callback function
-				func(animator);
+				func(animator, is_material);
 			});
 		}
 	}
@@ -374,16 +357,15 @@ WiiBanner::WiiBanner(const std::string& path)
 	}
 
 	// load animation files containing key frames
-	auto const add_animators = [&,this](const Animator& an)
+	auto const add_animators = [&,this](Animator& an, u8 is_material)
 	{
-		// TODO: some safety checks
-
-		Animator* const anim = an.is_material ?
+		Animator* const anim = is_material ?
 			mate_animator_map[an.name] :
 			pane_animator_map[an.name];
 
 		if (anim)
-			*anim += an;
+			// TODO: not positive about this 2nd param
+			anim->CopyFrames(an, frame_loop_start);
 	};
 
 	auto const brlan_start_offset = banner_arc.GetFileOffset("arc/anim/Banner_Start.brlan");
@@ -392,7 +374,7 @@ WiiBanner::WiiBanner(const std::string& path)
 	file.seekg(brlan_start_offset, std::ios::beg);
 	frame_loop_start = LoadAnimators(file, add_animators);
 	file.seekg(brlan_loop_offset, std::ios::beg);
-	frame_loop_end = frame_loop_start + LoadAnimators(file, add_animators, frame_loop_start);
+	frame_loop_end = frame_loop_start + LoadAnimators(file, add_animators);
 
 	SetFrame(frame_current);
 
@@ -418,16 +400,16 @@ WiiBanner::WiiBanner(const std::string& path)
 	//}
 }
 
-void WiiBanner::SetFrame(FrameNumber frame)
+void WiiBanner::SetFrame(FrameNumber frame_number)
 {
 	ForEach(panes, [&](Pane* pane)
 	{
-		pane->SetFrame(frame);
+		pane->SetFrame(frame_number);
 	});
 
 	ForEach(materials, [&](Material* material)
 	{
-		material->SetFrame(frame);
+		material->SetFrame(frame_number);
 	});
 }
 

@@ -23,82 +23,167 @@ distribution.
 
 #include "Animator.h"
 
-float BlendValue(FrameNumber frame, const std::map<FrameNumber, KeyFrame>& key_frames)
+//template <typename T>
+//inline T BlendValues(T p1, T p2, float intrpl)
+//{
+//	// will also work with u8 types this way
+//	if (p2 > p1)
+//	{
+//		const T diff = p2 - p1;
+//		return p1 + T(diff * intrpl);
+//	}
+//	else
+//	{
+//		const T diff = p1 - p2;
+//		return p1 - T(diff * intrpl);
+//	}
+//}
+
+void Animator::SetFrame(FrameNumber frame_number)
 {
-	// find the current keyframe, or the one after it
-	auto next = key_frames.lower_bound(frame);
-	
-	// current frame is higher than any keyframe, use the last keyframe
-	if (key_frames.end() == next)
-		--next;
-
-	auto prev = next;
-
-	// if this is not the current frame and not the first keyframe, use the previous one
-	if (frame < prev->first && key_frames.begin() != prev)
-		--prev;
-
-	// TODO: use "blend", dunno how it works
-
-	// clamp
-	frame = std::max(prev->first, std::min(next->first, frame));
-
-	if (next->first == prev->first)
+	ForEach(key_frames, [=](const std::pair<const FrameType&, const KeyFrameHandler&> frame_handler)
 	{
-		return prev->second.value;
-	}
-	else
-	{
-		const float intrpl = (frame - prev->first) / (next->first - prev->first);
-		return prev->second.value * (1.f - intrpl) + next->second.value * intrpl;
-	}
-}
+		const auto frame_value = frame_handler.second.GetFrame(frame_number);
 
-void Animator::SetFrame(FrameNumber frame)
-{
-	ForEach(key_frames, [&, this](const std::pair<KeyFrameType, std::map<FrameNumber, KeyFrame> >& kf)
-	{
-		const float value = BlendValue(frame, kf.second);
-
-		switch (kf.first.type)
+		switch (frame_handler.first.tag)
 		{
 		case RLPA:
-			ProcessRLPA(kf.first.index, value);
+			ProcessRLPA(frame_handler.first.index, frame_value);
 			break;
 
 		case RLTS:
-			ProcessRLTS(kf.first.index, value);
-			break;
-
-		case RLVI:
-			ProcessRLVI(value > 0.5f);
+			ProcessRLTS(frame_handler.first.index, frame_value);
 			break;
 
 		case RLVC:
-			ProcessRLVC(kf.first.index, value);
+			ProcessRLVC(frame_handler.first.index, (u8)frame_value);
 			break;
 
 		case RLMC:
-			ProcessRLMC();
+			//ProcessRLMC(kfs.first.index, (u8)kf.value);
+			break;
+		}
+	});
+
+	ForEach(static_frames, [=](const std::pair<const FrameType&, const StaticFrameHandler&> frame_handler)
+	{
+		auto const frame_data = frame_handler.second.GetFrame(frame_number);
+
+		switch (frame_handler.first.tag)
+		{
+		case RLVI:
+			ProcessRLVI(frame_data.second);
 			break;
 
 		case RLTP:
-			ProcessRLTP();
+			//ProcessRLTP(frame_data.second);
 			break;
 
 		case RLIM:
-			ProcessRLIM();
+			//ProcessRLIM(frame_data.second);
 			break;
 		}
 	});
 }
 
-Animator& Animator::operator+=(const Animator& rhs)
+void StaticFrameHandler::Load(std::istream& file, u16 count)
 {
-	ForEach(rhs.key_frames, [this](const std::pair<KeyFrameType, std::map<FrameNumber, KeyFrame> >& kf)
+	while (count--)
 	{
-		key_frames[kf.first].insert(kf.second.begin(), kf.second.end());
+		FrameNumber frame;
+		file >> BE >> frame;
+
+		auto& pair = frames[frame];
+		file >> BE >> pair.first >> pair.second;
+		file.seekg(2, std::ios::cur);	// these bytes important? :p
+
+		//std::cout << "\t\t\t" "frame: " << frame << ' ' << pair.first << " " << pair.second << '\n';
+	}
+}
+
+void KeyFrameHandler::Load(std::istream& file, u16 count)
+{
+	while (count--)
+	{
+		FrameNumber frame;
+		file >> BE >> frame;
+
+		file >> BE >> frames[frame];
+		file.seekg(4, std::ios::cur);	// skipping the "blend" value, dunno how to use it :/
+
+		//std::cout << "\t\t\t" "frame: " << frame << ' ' << frames[frame] << '\n';
+	}
+}
+
+StaticFrameHandler::Frame StaticFrameHandler::GetFrame(FrameNumber frame_number) const
+{
+	// assuming not empty, a safe assumption currently
+	auto frame_it = frames.lower_bound(frame_number);
+
+	// if this isn't the current frame or first frame, use the previous one
+	if (frame_number != frame_it->first && frame_it != frames.begin())
+		--frame_it;
+
+	return frame_it->second;
+}
+
+KeyFrameHandler::Frame KeyFrameHandler::GetFrame(FrameNumber frame_number) const
+{
+	// find the current keyframe, or the one after it
+	auto next = frames.lower_bound(frame_number);
+	
+	// current frame is higher than any keyframe, use the last keyframe
+	if (frames.end() == next)
+		--next;
+
+	auto prev = next;
+
+	// if this is after or on the current frame and not the first keyframe, use the previous one
+	if (frame_number < prev->first && frames.begin() != prev)
+		--prev;
+
+	if (next->first == prev->first)
+	{
+		// same 2 frames, return the first one
+		return prev->second;
+	}
+	else
+	{
+		// different frames, blend them together
+
+		// clamp
+		frame_number = std::max(prev->first, std::min(next->first, frame_number));
+		const float intrpl = (frame_number - prev->first) / (next->first - prev->first);
+
+		return prev->second + (next->second - prev->second) * intrpl;
+	}
+}
+
+void StaticFrameHandler::CopyFrames(const StaticFrameHandler& fh, FrameNumber frame_offset)
+{
+	ForEach(fh.frames, [=](const std::pair<const FrameNumber, const Frame&> frame)
+	{
+		frames[frame.first + frame_offset] = frame.second;
+	});
+}
+
+void KeyFrameHandler::CopyFrames(const KeyFrameHandler& fh, FrameNumber frame_offset)
+{
+	ForEach(fh.frames, [=](const std::pair<const FrameNumber, const Frame&> frame)
+	{
+		frames[frame.first + frame_offset] = frame.second;
+	});
+}
+
+void Animator::CopyFrames(Animator& rhs, FrameNumber frame_offset)
+{
+	ForEach(rhs.key_frames, [=](const std::pair<const FrameType&, const KeyFrameHandler&> kf)
+	{
+		key_frames[kf.first].CopyFrames(kf.second, frame_offset);
 	});
 
-	return *this;
+	ForEach(rhs.static_frames, [=](const std::pair<const FrameType&, const StaticFrameHandler&> kf)
+	{
+		static_frames[kf.first].CopyFrames(kf.second, frame_offset);
+	});
 }

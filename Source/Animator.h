@@ -30,7 +30,7 @@ distribution.
 
 typedef float FrameNumber;
 
-enum KEYFRAME_TYPE
+enum FRAME_TAG
 {
 	RLPA,
 	RLTS,
@@ -41,56 +41,77 @@ enum KEYFRAME_TYPE
 	RLIM
 };
 
-struct KeyFrameType
+struct FrameType
 {
-	KeyFrameType() {}
-
-	KeyFrameType(u8 _type, u8 _index)
-		: type(_type)
+	FrameType(FRAME_TAG _tag, u8 _type, u8 _index)
+		: tag(_tag)
+		, type(_type)
 		, index(_index)
 	{}
 
-	bool operator<(const KeyFrameType& rhs) const
+	bool operator<(const FrameType& rhs) const
 	{
 		return memcmp(this, &rhs, sizeof(*this)) < 0;
 	}
 
-	u8 type, index;
+	const FRAME_TAG tag;
+	const u8 type, index;
 };
 
-struct KeyFrame
+class Animator;
+
+class StaticFrameHandler
 {
-	KeyFrame() {}
+public:
+	void Load(std::istream& file, u16 count);
 
-	KeyFrame(float _value, float _blend)
-		: value(_value)
-		, blend(_blend)
-	{}
+	// TODO: std::pair is silly, make a struct
+	typedef std::pair<u8, u8> Frame;
 
-	float value, blend;
+	Frame GetFrame(FrameNumber frame_number) const;
+	void CopyFrames(const StaticFrameHandler& kf, FrameNumber frame_offset);
+
+private:
+	void Process(FrameNumber frame, Animator& animator) const;
+
+	std::map<FrameNumber, Frame> frames;
+};
+
+class KeyFrameHandler
+{
+public:
+	void Load(std::istream& file, u16 count);
+
+	typedef float Frame;
+
+	Frame GetFrame(FrameNumber frame_number) const;
+	void CopyFrames(const KeyFrameHandler& kf, FrameNumber frame_offset);
+
+private:
+	void Process(FrameNumber frame, Animator& animator) const;
+
+	// TODO: handle the "blend" float
+	std::map<FrameNumber, Frame> frames;
 };
 
 class Animator
 {
 public:
-	virtual ~Animator() {}
-
 	virtual void SetFrame(FrameNumber frame);
 
-	Animator& operator+=(const Animator& rhs);
+	void CopyFrames(Animator& rhs, FrameNumber frame_offset);
 
 //private:
 	virtual void ProcessRLPA(u8 index, float value) {}	// Pane Animation
 	virtual void ProcessRLTS(u8 index, float value) {}	// Texture Scale/Rotate/Translate
-	virtual void ProcessRLVI(bool value) {}	// Visibility
-	virtual void ProcessRLVC(u8 index, float value) {}	// Vertex Color
-	virtual void ProcessRLMC() {}	// Material Color
+	virtual void ProcessRLVI(u8 value) {}	// Visibility
+	virtual void ProcessRLVC(u8 index, u8 value) {}	// Vertex Color
+	virtual void ProcessRLMC(u8 index, u8 value) {}	// Material Color
 	virtual void ProcessRLTP() {}	// Texture Pallete
 	virtual void ProcessRLIM() {}	// 
 
-	std::map<KeyFrameType, std::map<FrameNumber, KeyFrame> > key_frames;
-
-	u8 is_material;
+	std::map<FrameType, StaticFrameHandler> static_frames;
+	std::map<FrameType, KeyFrameHandler> key_frames;
 
 	std::string name;
 };

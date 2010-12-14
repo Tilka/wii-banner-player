@@ -92,10 +92,10 @@ void Picture::Draw() const
 	glEnd();
 }
 
-void Picture::ProcessRLVC(u8 index, float value)
+void Picture::ProcessRLVC(u8 index, u8 value)
 {
 	if (index < 16)
-		((u8*)vertex_colors)[index] = (u8)value;
+		((u8*)vertex_colors)[index] = value;
 	else if (16 == index)
-		alpha = (u8)value;
+		alpha = value;
 }

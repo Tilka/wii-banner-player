@@ -65,10 +65,8 @@ void Pane::ProcessRLPA(u8 index, float value)
 		*values[index] = value;
 }
 
-void Pane::ProcessRLVI(bool value)
+void Pane::ProcessRLVI(u8 value)
 {
-	// TODO: should this be modifying alpha instead
-	// if so change param to a float
 	visible = value;
 }
 
