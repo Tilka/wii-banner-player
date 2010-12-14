@@ -84,15 +84,66 @@ Texture::Texture(std::istream& file)
 
 		const int tex_size = TexDecoder_GetTextureSizeInBytes(frame.width, frame.height, format);
 
+		GLenum gl_format, gl_iformat, gl_type = 0;
+
 		if (tex_size > sizeof(g_texture_read_buffer) || (frame.width * frame.height * 4) > sizeof(g_texture_decode_buffer))
 			std::cout << "texture is too large\n";
 		else
 		{
 			file.read((char*)g_texture_read_buffer, tex_size);
-			TexDecoder_Decode(g_texture_decode_buffer, g_texture_read_buffer, frame.width, frame.height, format, 0, 0, true);
+			auto const pcfmt = TexDecoder_Decode(g_texture_decode_buffer, g_texture_read_buffer, frame.width, frame.height, format, 0, 0);
+
+			switch (pcfmt)
+			{
+			default:
+			case PC_TEX_FMT_NONE:
+				std::cout << "Error decoding texture!!!\n";
+
+			case PC_TEX_FMT_BGRA32:
+				gl_format = GL_BGRA;
+				gl_iformat = 4;
+				gl_type = GL_UNSIGNED_BYTE;
+				break;
+
+			case PC_TEX_FMT_RGBA32:
+				gl_format = GL_RGBA;
+				gl_iformat = 4;
+				gl_type = GL_UNSIGNED_BYTE;
+				break;
+
+			case PC_TEX_FMT_I4_AS_I8:
+				gl_format = GL_LUMINANCE;
+				gl_iformat = GL_INTENSITY4;
+				gl_type = GL_UNSIGNED_BYTE;
+				break;
+
+			case PC_TEX_FMT_IA4_AS_IA8:
+				gl_format = GL_LUMINANCE_ALPHA;
+				gl_iformat = GL_LUMINANCE4_ALPHA4;
+				gl_type = GL_UNSIGNED_BYTE;
+				break;
+
+			case PC_TEX_FMT_I8:
+				gl_format = GL_LUMINANCE;
+				gl_iformat = GL_INTENSITY8;
+				gl_type = GL_UNSIGNED_BYTE;
+				break;
+
+			case PC_TEX_FMT_IA8:
+				gl_format = GL_LUMINANCE_ALPHA;
+				gl_iformat = GL_LUMINANCE8_ALPHA8;
+				gl_type = GL_UNSIGNED_BYTE;
+				break;
+
+			case PC_TEX_FMT_RGB565:
+				gl_format = GL_RGB;
+				gl_iformat = GL_RGB;
+				gl_type = GL_UNSIGNED_SHORT_5_6_5;
+				break;
+			}
 		}
 
-		frame.Load(g_texture_decode_buffer);
+		frame.Load(g_texture_decode_buffer, gl_format, gl_iformat, gl_type);
 
 		frames.push_back(frame);
 	}
@@ -111,11 +162,12 @@ void Texture::Frame::Bind() const
 	// TODO: set texture params
 }
 
-void Texture::Frame::Load(const u8* data)
+void Texture::Frame::Load(const u8* data, GLenum format, GLenum iformat, GLenum type)
 {
 	glGenTextures(1, &gltex);
 	glBindTexture(GL_TEXTURE_2D, gltex);
 
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
+	glTexImage2D(GL_TEXTURE_2D, 0, iformat, width, height, 0, format, type, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_FALSE);
 }
