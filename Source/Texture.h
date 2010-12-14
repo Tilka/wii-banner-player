@@ -57,7 +57,7 @@ public:
 		GLuint gltex;
 
 		void Bind() const;
-		void Load(const u8* data, GLenum format, GLenum iformat, GLenum type);
+		void Load(const u8* data, u32 expanded_width, GLenum format, GLenum iformat, GLenum type);
 	};
 
 protected:

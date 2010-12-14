@@ -82,7 +82,13 @@ Texture::Texture(std::istream& file)
 		// http://pabut.homeip.net:8000/yagcd/chap14.html#sec14.4
 		//
 
-		const int tex_size = TexDecoder_GetTextureSizeInBytes(frame.width, frame.height, format);
+		const u32 bsw = TexDecoder_GetBlockWidthInTexels(format) - 1;
+		const u32 bsh = TexDecoder_GetBlockHeightInTexels(format) - 1;
+
+		const u32 expanded_width  = (frame.width  + bsw) & (~bsw);
+		const u32 expanded_height = (frame.height + bsh) & (~bsh);
+
+		const int tex_size = TexDecoder_GetTextureSizeInBytes(expanded_width, expanded_height, format);
 
 		GLenum gl_format, gl_iformat, gl_type = 0;
 
@@ -91,7 +97,9 @@ Texture::Texture(std::istream& file)
 		else
 		{
 			file.read((char*)g_texture_read_buffer, tex_size);
-			auto const pcfmt = TexDecoder_Decode(g_texture_decode_buffer, g_texture_read_buffer, frame.width, frame.height, format, 0, 0);
+
+			auto const pcfmt = TexDecoder_Decode(g_texture_decode_buffer,
+				g_texture_read_buffer, expanded_width, expanded_height, format, 0, 0);
 
 			switch (pcfmt)
 			{
@@ -143,7 +151,7 @@ Texture::Texture(std::istream& file)
 			}
 		}
 
-		frame.Load(g_texture_decode_buffer, gl_format, gl_iformat, gl_type);
+		frame.Load(g_texture_decode_buffer, expanded_width, gl_format, gl_iformat, gl_type);
 
 		frames.push_back(frame);
 	}
@@ -162,12 +170,18 @@ void Texture::Frame::Bind() const
 	// TODO: set texture params
 }
 
-void Texture::Frame::Load(const u8* data, GLenum format, GLenum iformat, GLenum type)
+void Texture::Frame::Load(const u8* data, u32 expanded_width, GLenum format, GLenum iformat, GLenum type)
 {
 	glGenTextures(1, &gltex);
 	glBindTexture(GL_TEXTURE_2D, gltex);
 
+	if (expanded_width != width)
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, expanded_width);
+
 	glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
 	glTexImage2D(GL_TEXTURE_2D, 0, iformat, width, height, 0, format, type, data);
 	glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_FALSE);
+
+	if (expanded_width != width)
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 }
