@@ -45,7 +45,7 @@ public:
 	u8 origin;
 	u8 alpha;		// used?
 
-	bool disable;	// used by the groups
+	bool hide;	// used by the groups
 
 	struct XYZ
 	{

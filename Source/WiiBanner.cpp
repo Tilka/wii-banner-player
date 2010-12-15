@@ -454,7 +454,7 @@ WiiBanner::WiiBanner(const std::string& path)
 				auto const pane_it = pane_animator_map.find(pane);
 
 				if (pane_animator_map.end() != pane_it)
-					pane_it->second->disable = true;
+					pane_it->second->hide = true;
 			});
 		}
 	});
@@ -509,8 +509,8 @@ void WiiBanner::AdvanceFrame()
 {
 	++frame_current;
 
-	// > or >= ?
-	if (frame_current > frame_loop_end)
+	// should i just use == ?
+	if (frame_current >= frame_loop_end)
 		frame_current = frame_loop_start;
 
 	SetFrame(frame_current);
