@@ -52,7 +52,7 @@ void Animator::SetFrame(FrameNumber frame_number)
 			break;
 
 		case RLTS:
-			ProcessRLTS(frame_handler.first.index, frame_value);
+			ProcessRLTS(frame_handler.first.type, frame_handler.first.index, frame_value);
 			break;
 
 		case RLVC:
@@ -118,10 +118,15 @@ void KeyFrameHandler::Load(std::istream& file, u16 count)
 StaticFrameHandler::Frame StaticFrameHandler::GetFrame(FrameNumber frame_number) const
 {
 	// assuming not empty, a safe assumption currently
+
 	auto frame_it = frames.lower_bound(frame_number);
 
-	// if this isn't the current frame or first frame, use the previous one
-	if (frame_number != frame_it->first && frame_it != frames.begin())
+	// current frame is higher than any keyframe, use the last keyframe
+	if (frames.end() == frame_it)
+		--frame_it;
+
+	// if this is after the current frame and not the first keyframe, use the previous one
+	if (frame_number < frame_it->first && frames.begin() != frame_it)
 		--frame_it;
 
 	return frame_it->second;
@@ -129,6 +134,8 @@ StaticFrameHandler::Frame StaticFrameHandler::GetFrame(FrameNumber frame_number)
 
 KeyFrameHandler::Frame KeyFrameHandler::GetFrame(FrameNumber frame_number) const
 {
+	// assuming not empty, a safe assumption currently
+
 	// find the current keyframe, or the one after it
 	auto next = frames.lower_bound(frame_number);
 	
@@ -138,7 +145,7 @@ KeyFrameHandler::Frame KeyFrameHandler::GetFrame(FrameNumber frame_number) const
 
 	auto prev = next;
 
-	// if this is after or on the current frame and not the first keyframe, use the previous one
+	// if this is after the current frame and not the first keyframe, use the previous one
 	if (frame_number < prev->first && frames.begin() != prev)
 		--prev;
 

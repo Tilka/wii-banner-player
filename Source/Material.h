@@ -41,7 +41,7 @@ public:
 
 	void Bind() const;
 
-	void ProcessRLTS(u8 index, float value);
+	void ProcessRLTS(u8 type, u8 index, float value);
 
 	void AdjustTexCoords(TexCoord tc[]) const;
 	
@@ -54,17 +54,34 @@ public:
 	}
 
 //protected:
-	Texture* texture;
 
-	struct
+	struct TextureRef
 	{
-		float x, y;
-	} translate, scale;
+		TextureRef(u16 _tex_index, u8 _wrap_s, u8 _wrap_t)
+			: tex_index(_tex_index)
+			, wrap_s(_wrap_s), wrap_t(_wrap_t)
+			, texture(NULL)
+		{
+			translate.x = translate.y = scale.x = scale.y = 1.f;
+			rotate = 0;
+		}
 
-	float rotate;
+		struct
+		{
+			float x, y;
+		} translate, scale;
 
-	u16 tex_index;
-	u8 wrap_s, wrap_t;
+		float rotate;
+
+		u16 tex_index;
+		u8 wrap_s, wrap_t;
+
+		u8 tgen_type, tgen_src, mtrx_src;	// TODO: initialize these guys
+
+		Texture* texture;
+	};
+
+	std::vector<TextureRef> texture_refs;
 
 	// why are these 2 byte values?
 	s16 color_fore[4];

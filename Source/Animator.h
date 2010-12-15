@@ -103,7 +103,7 @@ public:
 
 //private:
 	virtual void ProcessRLPA(u8 index, float value) {}	// Pane Animation
-	virtual void ProcessRLTS(u8 index, float value) {}	// Texture Scale/Rotate/Translate
+	virtual void ProcessRLTS(u8 type, u8 index, float value) {}	// Texture Scale/Rotate/Translate
 	virtual void ProcessRLVI(u8 value) {}	// Visibility
 	virtual void ProcessRLVC(u8 index, u8 value) {}	// Vertex Color
 	virtual void ProcessRLMC(u8 index, u8 value) {}	// Material Color

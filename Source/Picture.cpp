@@ -86,21 +86,21 @@ void Picture::Draw() const
 
 	glBegin(GL_POLYGON);
 
-	glColor4ubv(vc[0]);
-	glTexCoord2f(tc[0].s, tc[0].t);
-	glVertex2f(0.f, height);
-
-	glColor4ubv(vc[1]);
-	glTexCoord2f(tc[1].s, tc[1].t);
-	glVertex2f(width, height);
+	glColor4ubv(vc[2]);
+	glTexCoord2f(tc[2].s, tc[2].t);
+	glVertex2f(0.f, 0.f);
 
 	glColor4ubv(vc[3]);
 	glTexCoord2f(tc[3].s, tc[3].t);
 	glVertex2f(width, 0.f);
 
-	glColor4ubv(vc[2]);
-	glTexCoord2f(tc[2].s, tc[2].t);
-	glVertex2f(0.f, 0.f);
+	glColor4ubv(vc[1]);
+	glTexCoord2f(tc[1].s, tc[1].t);
+	glVertex2f(width, height);
+
+	glColor4ubv(vc[0]);
+	glTexCoord2f(tc[0].s, tc[0].t);
+	glVertex2f(0.f, height);
 
 	glEnd();
 }

@@ -28,34 +28,28 @@ distribution.
 #define SAFE_ARRAY_VALUE(a, x) (((x) < ARRAY_LENGTH(a)) ? (a[x]) : (a[0]))
 
 Material::Material(std::istream& file, const std::vector<Texture*>& textures)
-	: texture(NULL)
 {
-	wrap_s = 0;
-	wrap_t = 0;
-
 	char material_name[21] = {};
-
 
 	union
 	{
 		u32 hex;
 
-		// TODO: name these better
 		struct
 		{
-			u32 texture : 4;
-			u32 tex_srt : 4;
-			u32 tex_coord : 4;
-			u32 ua6 : 1;
-			u32 ua7 : 2;
-			u32 ua8 : 3;
-			u32 ua9 : 5;
-			u32 uaa : 1;
-			u32 uab : 1;
-			u32 ua4 : 1;
-			u32 padding1 : 1;
-			u32 ua5 : 1;
-			u32 padding2 : 4;
+			u32 texture_ref : 4;
+			u32 texture_srt : 4;
+			u32 texture_coord : 4;
+			u32 tev_swap_mode : 1;
+			u32 ind_texture_srt : 2;
+			u32 ind_texture_order : 3;
+			u32 tev_stage : 5;
+			u32 alpha_compare : 1;
+			u32 blend_mode : 1;
+			u32 channel_control : 1;
+			u32 pad1 : 1;
+			u32 material_color : 1;
+			u32 pad2 : 4;
 		};
 	} flags;
 
@@ -73,48 +67,50 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 
 	std::cout << "\tmaterial: " << name << '\n';
 
-	// texture reference
-	// TODO: only single reference supported
-	for (u32 i = 0; i != flags.texture; ++i)
+	// TextureRef
+	for (u32 i = 0; i != flags.texture_ref; ++i)
 	{
+		u16 tex_index;
+		u8 wrap_s, wrap_t;
 		file >> BE >> tex_index >> wrap_s >> wrap_t;
 
-		if (tex_index >= textures.size())
-			std::cout << "Texture Index Out Of Range!!!\n";
+		texture_refs.push_back(TextureRef(tex_index, wrap_s, wrap_t));
+
+		if (tex_index < textures.size())
+			texture_refs.back().texture = textures[tex_index];
 		else
-			texture = textures[tex_index];
+			std::cout << "Texture Index Out Of Range!!!\n";
 	}
 
-	scale.x = 1;
-	scale.y = 1;
-
-	translate.x = 0;
-	translate.x = 0;
-
-	rotate = 0;
-
-	// srt
-	for (u32 i = 0; i != flags.tex_srt; ++i)
+	// TextureSRT
+	for (u32 i = 0; i != flags.texture_srt; ++i)
 	{
-		file >> BE >> translate.x >> translate.y >> rotate >> scale.x >> scale.y;
+		// TODO: make sure not out of range
+		TextureRef& ref = texture_refs[i];
 
-		std::cout << "XTrans: " << translate.x << " YTrans: " << translate.y << " Rotate: " << rotate
-			<< " XScale: " << scale.x << " YScale: " << scale.y << '\n';
+		file >> BE >> ref.translate.x >> ref.translate.y >> ref.rotate >> ref.scale.x >> ref.scale.y;
+
+		//std::cout << "XTrans: " << translate.x << " YTrans: " << translate.y << " Rotate: " << rotate
+			//<< " XScale: " << scale.x << " YScale: " << scale.y << '\n';
 	}
+	//if (flags.texture_srt > 1)
+	//{
+	//	std::cout << "material: " << name << " has " << flags.texture_srt << "texture refs\n";
+	//	std::cin.get();
+	//}
 
-	// coord
-	for (u32 i = 0; i != flags.tex_coord; ++i)
+	// CoordGen
+	for (u32 i = 0; i != flags.texture_coord; ++i)
 	{
-		char tgen_type;
-		char tgen_src;
-		char mtxsrc;
+		// TODO: make sure not out of range
+		TextureRef& ref = texture_refs[i];
 
-		file >> BE >> tgen_type >> tgen_src >> mtxsrc;
+		file >> BE >> ref.tgen_type >> ref.tgen_src >> ref.mtrx_src;
 		file.seekg(1, std::ios::cur);
 	}
 
-	// color/alpha texture source
-	if (flags.ua4)
+	// ChanControl
+	if (flags.channel_control)
 	{
 		u8 color_matsrc;
 		u8 alpha_matsrc;
@@ -122,61 +118,160 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 		file >> BE >> color_matsrc >> alpha_matsrc;
 		file.seekg(2, std::ios::cur);
 
+		//if (color_matsrc != alpha_matsrc)
+		//{
+		//	std::cout << "material: " << name << " has different color and alpha src";
+		//	std::cin.get();
+		//}
+
 		//std::cout << "color_matsrc: " << (int)color_matsrc << " alpha_matsrc: " << (int)alpha_matsrc << '\n';
 	}
 
-	// color
-	if (flags.ua5)
+	// MaterialColor
+	if (flags.material_color)
 	{
-		//ReadBEArray(file, color, 4);
+		u8 color[4];
+		ReadBEArray(file, color, 4);
 
 		//std::cout << "color: " << (int)color[0] << ',' << (int)color[1] << ',' << (int)color[2] << '\n';
 	}
-}
 
-GLenum wraps[] =
-{
-	GL_CLAMP,
-	GL_REPEAT,
-	GL_MIRRORED_REPEAT,
-	// TODO: there are more
-};
+	// TevSwapModeTable
+	if (flags.tev_swap_mode)
+	{
+		u8 color_tev[4];
+		ReadBEArray(file, color_tev, 4);
+	}
+
+	// IndTextureSRT
+	for (u32 i = 0; i != flags.ind_texture_srt; ++i)
+	{
+		// TODO: read des guys
+		//file >> BE >> translate.x >> translate.y >> rotate >> scale.x >> scale.y;
+
+		file.seekg(5 * 4, std::ios::cur);
+
+		//std::cout << "XTrans: " << translate.x << " YTrans: " << translate.y << " Rotate: " << rotate
+			//<< " XScale: " << scale.x << " YScale: " << scale.y << '\n';
+	}
+
+	// IndTextureOrder
+	for (u32 i = 0; i != flags.ind_texture_order; ++i)
+	{
+		// TODO: store these
+		u8 tex_coord, tex_map, scale_s, scale_t;
+
+		file >> BE >> tex_coord >> tex_map >> scale_s, scale_t;
+	}
+
+	// TODO:
+	// TevStage
+	for (u32 i = 0; i != flags.tev_stage; ++i)
+	{
+
+	}
+
+	// TODO:
+	// AlphaCompare
+	if (flags.alpha_compare)
+	{
+		//u8 comp, aop, ref0, ref1;
+		//file >> BE >> comp >> aop >> ref0 >> ref1;
+	}
+
+	// BlendMode
+	if (flags.blend_mode)
+	{
+		//u8 type, src_fact, dst_fact, op;
+		//file >> BE >> type >> src_fact >> dst_fact >> op;
+
+		//std::cout << "has blend mode\n";
+		//std::cin.get();
+	}
+}
 
 void Material::Bind() const
 {
-	if (texture)
-		texture->Bind(0);
-	else
-		glBindTexture(GL_TEXTURE_2D, 0);
+	if (texture_refs.size())
+	{
+		const TextureRef& ref = texture_refs.front();
+			
+		if (ref.texture)
+			ref.texture->Bind(0);
+		else
+			glBindTexture(GL_TEXTURE_2D, 0);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, SAFE_ARRAY_VALUE(wraps, wrap_s));
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, SAFE_ARRAY_VALUE(wraps, wrap_t));
+		static const GLenum wraps[] =
+		{
+			GL_CLAMP,
+			GL_REPEAT,
+			GL_MIRRORED_REPEAT,
+			// TODO: there are more...
+		};
+
+		if (ref.wrap_s < 3)
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wraps[ref.wrap_s]);
+
+		if (ref.wrap_t < 3)
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wraps[ref.wrap_t]);
+	}
 }
 
-void Material::ProcessRLTS(u8 index, float value)
+void Material::ProcessRLTS(u8 type, u8 index, float value)
 {
-	float* const values[] =
+	if (index < 5 && type < texture_refs.size())
 	{
-		&translate.x,
-		&translate.y,
+		TextureRef& ref = texture_refs[type];
 
-		&rotate,
+		float* const values[] =
+		{
+			&ref.translate.x,
+			&ref.translate.y,
 
-		&scale.x,
-		&scale.y,
-	};
+			&ref.rotate,
 
-	if (index < 5)
+			&ref.scale.x,
+			&ref.scale.y,
+		};
+
 		*values[index] = value;
+	}
 }
 
 void Material::AdjustTexCoords(TexCoord tc[]) const
 {
+	if (texture_refs.empty())
+		return;
+
+	// TODO: check if out of range
+	const TextureRef& ref = texture_refs.front();
+
+	// TODO: rotate
+
+	// scale
+	// TODO: there must be better math?
+	auto const expand_values = [](float& v1, float& v2, float scale)
+	{
+		const float
+			avg = (v2 + v1) / 2,
+			adj = (v2 - v1) / 2 * scale;
+
+		v2 = avg + adj;
+		v1 = avg - adj;
+	};
+
+	// scale x
+	expand_values(tc[0].s, tc[1].s, ref.scale.x);
+	expand_values(tc[2].s, tc[3].s, ref.scale.x);
+
+	// scale y
+	expand_values(tc[1].t, tc[2].t, ref.scale.y);
+	expand_values(tc[3].t, tc[0].t, ref.scale.y);
+
+	// translate
 	for (int i = 0; i != 4; ++i)
 	{
-		tc[i].s = (tc[i].s + translate.x) * scale.x;
-		tc[i].t = (tc[i].t + translate.y) * scale.y;
+		tc[i].s += ref.translate.x;
+		tc[i].t += ref.translate.y;
 	}
-
-	//glScalef(1 / scale.x, 1 / scale.y, 1.f);
 }
