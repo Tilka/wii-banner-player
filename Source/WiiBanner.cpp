@@ -233,12 +233,25 @@ WiiBanner::WiiBanner(const std::string& path)
 	, width(1), height(1)	// 1 is stupid, but no /0 errors this way :p
 	, centered(0)
 {
-	std::map<std::string, Animator*> pane_animator_map;
+	std::map<std::string, Pane*> pane_animator_map;
 	std::map<std::string, Material*> mate_animator_map;
 
-	PaneHolder* last_pane;
+	PaneHolder* last_pane = NULL;
 	std::stack<std::vector<Pane*>*> pane_stack;
 	pane_stack.push(&panes);
+
+	// temporary
+	struct Group
+	{
+		std::list<std::string> panes;
+		std::map<std::string, Group> groups;
+	};
+
+	std::map<std::string, Group> groups;
+
+	Group* last_group = NULL;
+	std::stack<std::map<std::string, Group>*> group_stack;
+	group_stack.push(&groups);
 
 	// bunch of crap to parse/decompress archives multiple times
 
@@ -337,24 +350,62 @@ WiiBanner::WiiBanner(const std::string& path)
 
 			std::cout << "\tloaded " << materials.size() << " materials\n";
 		}
-		else if (header.magic == "pan1")
-		{
-			pane_stack.top()->push_back(last_pane = new PaneHolder(file));
-			pane_animator_map[last_pane->name] = last_pane;
-		}
 		else if (header.magic == "pic1")
 		{
 			Pane* const pane = new Picture(file, materials);
 			pane_stack.top()->push_back(pane);
 			pane_animator_map[pane->name] = pane;
 		}
+		else if (header.magic == "pan1")
+		{
+			pane_stack.top()->push_back(last_pane = new PaneHolder(file));
+			pane_animator_map[last_pane->name] = last_pane;
+		}
 		else if (header.magic == "pas1")
 		{
-			pane_stack.push(&last_pane->panes);
+			if (last_pane)
+				pane_stack.push(&last_pane->panes);
 		}
 		else if (header.magic == "pae1")
 		{
-			pane_stack.pop();
+			if (pane_stack.size() > 1)
+				pane_stack.pop();
+		}
+		else if (header.magic == "grp1")
+		{
+			char read_name[0x11] = {};
+			file.read(read_name, 0x10);
+
+			Group& group_ref = (*group_stack.top())[read_name];
+
+			u16 sub_count;
+			file >> BE >> sub_count;
+			file.seekg(2, std::ios::cur);
+
+			while (sub_count--)
+			{
+				char read_name[0x11];
+				file.read(read_name, 0x10);
+				group_ref.panes.push_back(read_name);
+			}
+
+			last_group = &group_ref;
+		}
+		else if (header.magic == "grs1")
+		{
+			if (last_group)
+				group_stack.push(&last_group->groups);
+		}
+		else if (header.magic == "gre1")
+		{
+			if (group_stack.size() > 1)
+				group_stack.pop();
+		}
+		else
+		{
+			std::cout << "UNKNOWN SECTION: ";
+			std::cout.write((char*)header.magic.data, 4) << '\n';
+			std::cin.get();
 		}
 	}
 
@@ -362,8 +413,8 @@ WiiBanner::WiiBanner(const std::string& path)
 	auto const add_animators = [&,this](Animator& an, u8 is_material)
 	{
 		Animator* const anim = is_material ?
-			mate_animator_map[an.name] :
-			pane_animator_map[an.name];
+			static_cast<Animator*>(mate_animator_map[an.name]) :
+			static_cast<Animator*>(pane_animator_map[an.name]);
 
 		if (anim)
 			// TODO: not positive about this 2nd param
@@ -384,6 +435,28 @@ WiiBanner::WiiBanner(const std::string& path)
 	ForEach(panes, [&](const Pane* pane)
 	{
 		pane->Print(0);
+	});
+
+	// print the group layout
+	//ForEach(groups, [&](Group& group)
+	//{
+	//	group.Print(0);
+	//});
+
+	// hide panes depending on language
+	ForEach(groups["RootGroup"].groups, [&](const std::pair<const std::string&, const Group&> group)
+	{
+		// TEMPORARY fixed language
+		if (group.first != "ENG")
+		{
+			ForEach(group.second.panes, [&](const std::string& pane)
+			{
+				auto const pane_it = pane_animator_map.find(pane);
+
+				if (pane_animator_map.end() != pane_it)
+					pane_it->second->disable = true;
+			});
+		}
 	});
 
 	//std::string pname;

@@ -24,9 +24,10 @@ distribution.
 #include "Pane.h"
 
 Pane::Pane(std::istream& file)
+	: disable(false)
 {
 	char pane_name[0x11] = {}; // name in ASCII.
-	char user_data[0x09] = {}; // User data
+	char user_data[0x09] = {}; // User data	// is it really....?
 
 	file >> BE >> visible >> origin >> alpha;
 	file.seekg(1, std::ios::cur);
@@ -82,7 +83,7 @@ void PaneHolder::SetFrame(FrameNumber frame)
 
 void Pane::Render() const
 {
-	if (!visible)
+	if (!visible || disable)
 		return;
 
 	glPushMatrix();
