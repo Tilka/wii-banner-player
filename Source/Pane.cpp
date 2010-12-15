@@ -98,7 +98,7 @@ void Pane::Render() const
 	glScalef(scale.x, scale.y, 1.f);
 
 	// origin
-	glTranslatef(-width / 2 * (origin % 3), -height / 2 * (origin / 3), 0);
+	glTranslatef(-width / 2 * (origin % 3), -height / 2 * (2 - origin / 3), 0);
 
 	// rotations
 	glRotatef(rotate.x, 1.f, 0.f, 0.f);
@@ -113,7 +113,7 @@ void Pane::Render() const
 void PaneHolder::Draw() const
 {
 	// undo origin
-	glTranslatef(width / 2 * (origin % 3), height / 2 * (origin / 3), 0);
+	glTranslatef(width / 2 * (origin % 3), height / 2 * (2 - origin / 3), 0);
 
 	ForEach(panes, [](const Pane* pane)
 	{

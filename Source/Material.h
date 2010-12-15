@@ -83,6 +83,20 @@ public:
 
 	std::vector<TextureRef> texture_refs;
 
+	struct
+	{
+		u8 type, src_factor, dst_factor, op;
+
+	} blend_mode;
+
+	struct
+	{
+		u8 function, aop, ref0, ref1;
+
+	} alpha_compare;
+
+	u8 color[4];
+
 	// why are these 2 byte values?
 	s16 color_fore[4];
 	s16 color_back[4];

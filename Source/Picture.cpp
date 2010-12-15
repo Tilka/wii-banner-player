@@ -73,6 +73,7 @@ void Picture::Draw() const
 	memcpy(vc, vertex_colors, 4 * 4);
 
 	const s16* const mat_back = material->GetColorBack();
+	//const s16* const mat_fore = material->GetColorBack();
 
 	//std::cout << "mat_back[3]: " << mat_back[3] << '\n';
 	

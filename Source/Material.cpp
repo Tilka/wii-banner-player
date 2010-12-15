@@ -29,7 +29,19 @@ distribution.
 
 Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 {
-	char material_name[21] = {};
+	{
+	char read_name[21] = {};
+	file.read(read_name, 20);
+	name = read_name;
+	}
+
+	std::cout << "\tmaterial: " << name << '\n';
+
+	// read colors
+	ReadBEArray(file, color_fore, 4);
+	ReadBEArray(file, color_back, 4);
+	ReadBEArray(file, color_tevreg3, 4);
+	ReadBEArray(file, (u8*)color_tevk, sizeof(color_tevk));
 
 	union
 	{
@@ -53,19 +65,7 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 		};
 	} flags;
 
-	file.read(material_name, 20);
-
-	// read colors
-	ReadBEArray(file, color_fore, 4);
-	ReadBEArray(file, color_back, 4);
-	ReadBEArray(file, color_tevreg3, 4);
-	ReadBEArray(file, (u8*)color_tevk, sizeof(color_tevk));
-
 	file >> BE >> flags.hex;
-
-	name = material_name;
-
-	std::cout << "\tmaterial: " << name << '\n';
 
 	// TextureRef
 	for (u32 i = 0; i != flags.texture_ref; ++i)
@@ -95,7 +95,7 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	}
 	//if (flags.texture_srt > 1)
 	//{
-	//	std::cout << "material: " << name << " has " << flags.texture_srt << "texture refs\n";
+	//	std::cout << flags.texture_srt << "texture refs\n";
 	//	std::cin.get();
 	//}
 
@@ -112,17 +112,21 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	// ChanControl
 	if (flags.channel_control)
 	{
-		u8 color_matsrc;
-		u8 alpha_matsrc;
+		u8 color_matsrc, alpha_matsrc;
+		//u8 pad1, pad2;
 
-		file >> BE >> color_matsrc >> alpha_matsrc;
+		file >> BE >> color_matsrc >> alpha_matsrc;// >> pad1 >> pad2;
 		file.seekg(2, std::ios::cur);
 
-		//if (color_matsrc != alpha_matsrc)
-		//{
-		//	std::cout << "material: " << name << " has different color and alpha src";
-		//	std::cin.get();
-		//}
+		if (color_matsrc != alpha_matsrc)
+		{
+			std::cout << "color: " << (int)color_matsrc
+				<< " alpha: " << (int)alpha_matsrc
+				//<< " pad1: " << (int)pad1
+				//<< " pad2: " << (int)pad2
+				<< '\n';
+			//std::cin.get();
+		}
 
 		//std::cout << "color_matsrc: " << (int)color_matsrc << " alpha_matsrc: " << (int)alpha_matsrc << '\n';
 	}
@@ -130,10 +134,15 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	// MaterialColor
 	if (flags.material_color)
 	{
-		u8 color[4];
 		ReadBEArray(file, color, 4);
 
+		// these are like always 255
 		//std::cout << "color: " << (int)color[0] << ',' << (int)color[1] << ',' << (int)color[2] << '\n';
+		//std::cin.get();
+	}
+	else
+	{
+		memset(color, 255, 4);
 	}
 
 	// TevSwapModeTable
@@ -162,31 +171,51 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 		u8 tex_coord, tex_map, scale_s, scale_t;
 
 		file >> BE >> tex_coord >> tex_map >> scale_s, scale_t;
+
+			std::cout << "ind_texture: " << name << "tex_coord: " << (int)tex_coord
+				<< " tex_map: " << (int)tex_map << '\n';
+			//std::cin.get();
 	}
 
 	// TODO:
 	// TevStage
 	for (u32 i = 0; i != flags.tev_stage; ++i)
 	{
-
+		file.seekg(8, std::ios::cur);
 	}
 
 	// TODO:
 	// AlphaCompare
 	if (flags.alpha_compare)
 	{
-		//u8 comp, aop, ref0, ref1;
-		//file >> BE >> comp >> aop >> ref0 >> ref1;
+		file >> BE >> alpha_compare.function >> alpha_compare.aop
+			>> alpha_compare.ref0 >> alpha_compare.ref1;
+	}
+	else
+	{
+		alpha_compare.function = 0x66;
+		alpha_compare.ref0 = 0;
+		alpha_compare.ref1 = 0;
+		//alpha_compare.aop = ;
 	}
 
 	// BlendMode
 	if (flags.blend_mode)
 	{
-		//u8 type, src_fact, dst_fact, op;
-		//file >> BE >> type >> src_fact >> dst_fact >> op;
+		file >> BE >> blend_mode.type >> blend_mode.src_factor >> blend_mode.dst_factor >> blend_mode.op;
 
-		//std::cout << "has blend mode\n";
+		//std::cout << "blend mode:\t"
+		//	<< " type: " << (int)type
+		//	<< " src: " << (int)src_fact << " dst: " << (int)dst_fact
+		//	<< " op: " << (int)op << '\n';
 		//std::cin.get();
+	}
+	else
+	{
+		blend_mode.type = 1;
+		blend_mode.src_factor = 4;
+		blend_mode.dst_factor = 5;
+		//blend_mode.op = ;
 	}
 }
 
@@ -215,6 +244,59 @@ void Material::Bind() const
 		if (ref.wrap_t < 3)
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wraps[ref.wrap_t]);
 	}
+
+	static const GLuint alpha_funcs[] =
+	{
+		GL_NEVER,
+		GL_EQUAL,
+		GL_LEQUAL,
+		GL_GREATER,
+		GL_NOTEQUAL,
+		GL_GEQUAL,
+		GL_ALWAYS,
+	};
+
+	if ((alpha_compare.function & 0xf) < 7)
+		glAlphaFunc(alpha_funcs[alpha_compare.function & 0xf], (float)alpha_compare.ref0 / 255.f);
+
+	static const GLuint blend_modes[] =
+	{
+		0,	// none?
+		GL_FUNC_ADD,
+		GL_MAX,	// LOGIC??
+		GL_FUNC_SUBTRACT,
+	};
+
+	if (blend_mode.op < 4)
+	{
+		if (blend_mode.op)
+		{
+			//glEnable(GL_BLEND);
+			//glBlendEquation(blend_modes[blend_mode.type]);
+		}
+		else
+		{
+			//glDisable(GL_BLEND);
+		}
+	}
+
+	static const GLuint blend_factors[] =
+	{
+		GL_ZERO,
+		GL_ONE,
+		GL_SRC_COLOR,
+		GL_ONE_MINUS_SRC_COLOR,
+		GL_SRC_ALPHA,
+		GL_ONE_MINUS_SRC_ALPHA,
+		GL_DST_ALPHA,
+		GL_ONE_MINUS_DST_ALPHA,
+	};
+
+	if (blend_mode.src_factor < 8 && blend_mode.dst_factor < 8)
+		glBlendFunc(blend_factors[blend_mode.src_factor], blend_factors[blend_mode.dst_factor]);
+
+	// TODO: not good?
+	//glBlendColor((float)color[0] / 255, (float)color[1] / 255, (float)color[2] / 255, (float)color[3] / 255);
 }
 
 void Material::ProcessRLTS(u8 type, u8 index, float value)
