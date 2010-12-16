@@ -42,6 +42,7 @@ public:
 	void Bind() const;
 
 	void ProcessRLTS(u8 type, u8 index, float value);
+	void ProcessRLMC(u8 index, u8 value);
 
 	void AdjustTexCoords(TexCoord tc[]) const;
 	
@@ -94,6 +95,20 @@ public:
 		u8 function, aop, ref0, ref1;
 
 	} alpha_compare;
+
+	union
+	{
+		u8 value;
+
+		struct
+		{
+			u8 red : 2;
+			u8 green : 2;
+			u8 blue : 2;
+			u8 alpha : 2;
+		};
+
+	} tev_swap_mode_table[4];
 
 	u8 color[4];
 

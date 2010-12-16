@@ -491,7 +491,8 @@ void WiiBanner::SetFrame(FrameNumber frame_number)
 void WiiBanner::Render()
 {
 	glLoadIdentity();
-	gluOrtho2D(-width, 0, -height, 0);
+	//gluOrtho2D(-width, 0, -height, 0);
+	glOrtho(-width, 0, -height, 0, -1000, 1000);
 
 	if (centered)
 		glTranslatef(-width / 2, -height / 2, 0);

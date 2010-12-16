@@ -67,6 +67,8 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 
 	file >> BE >> flags.hex;
 
+	std::cout << "flags: " << flags.hex << '\n';
+
 	// TextureRef
 	for (u32 i = 0; i != flags.texture_ref; ++i)
 	{
@@ -120,11 +122,11 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 
 		if (color_matsrc != alpha_matsrc)
 		{
-			std::cout << "color: " << (int)color_matsrc
-				<< " alpha: " << (int)alpha_matsrc
+			//std::cout << "color: " << (int)color_matsrc
+				//<< " alpha: " << (int)alpha_matsrc
 				//<< " pad1: " << (int)pad1
 				//<< " pad2: " << (int)pad2
-				<< '\n';
+				//<< '\n';
 			//std::cin.get();
 		}
 
@@ -148,8 +150,14 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	// TevSwapModeTable
 	if (flags.tev_swap_mode)
 	{
-		u8 color_tev[4];
-		ReadBEArray(file, color_tev, 4);
+		ReadBEArray(file, tev_swap_mode_table, 4);
+
+		//std::cout << "TevSwapModeTable:\n";
+		//for (unsigned int i = 0; i != 4; ++i)
+		//	std::cout << "\t[" << i << "]: red: " << (int)tev_swap_mode_table[i].red
+		//		<< " green: " << (int)tev_swap_mode_table[i].green
+		//		<< " blue: " << (int)tev_swap_mode_table[i].blue
+		//		<< " alpha: " << (int)tev_swap_mode_table[i].alpha << '\n';
 	}
 
 	// IndTextureSRT
@@ -158,10 +166,9 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 		// TODO: read des guys
 		//file >> BE >> translate.x >> translate.y >> rotate >> scale.x >> scale.y;
 
-		file.seekg(5 * 4, std::ios::cur);
+		//file.seekg(5 * 4, std::ios::cur);
 
-		//std::cout << "XTrans: " << translate.x << " YTrans: " << translate.y << " Rotate: " << rotate
-			//<< " XScale: " << scale.x << " YScale: " << scale.y << '\n';
+		//std::cout << "ind_texture: SRT\n";
 	}
 
 	// IndTextureOrder
@@ -172,16 +179,20 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 
 		file >> BE >> tex_coord >> tex_map >> scale_s, scale_t;
 
-			std::cout << "ind_texture: " << name << "tex_coord: " << (int)tex_coord
-				<< " tex_map: " << (int)tex_map << '\n';
-			//std::cin.get();
+		file.ignore(1);
+
+		//std::cout << "ind_texture: " << name << "tex_coord: " << (int)tex_coord
+		//	<< " tex_map: " << (int)tex_map << '\n';
+		//std::cin.get();
 	}
 
 	// TODO:
 	// TevStage
 	for (u32 i = 0; i != flags.tev_stage; ++i)
 	{
-		file.seekg(8, std::ios::cur);
+		file.seekg(16, std::ios::cur);
+
+		std::cout << "TevStage\n";
 	}
 
 	// TODO:
@@ -190,6 +201,12 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	{
 		file >> BE >> alpha_compare.function >> alpha_compare.aop
 			>> alpha_compare.ref0 >> alpha_compare.ref1;
+
+		//std::cout << "alpha compare:\t"
+		//	<< " function: " << (int)alpha_compare.function
+		//	<< " aop: " << (int)alpha_compare.aop << " ref0: " << (int)alpha_compare.ref0
+		//	<< " ref1: " << (int)alpha_compare.ref1 << '\n';
+		//std::cin.get();
 	}
 	else
 	{
@@ -204,11 +221,11 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	{
 		file >> BE >> blend_mode.type >> blend_mode.src_factor >> blend_mode.dst_factor >> blend_mode.op;
 
-		//std::cout << "blend mode:\t"
-		//	<< " type: " << (int)type
-		//	<< " src: " << (int)src_fact << " dst: " << (int)dst_fact
-		//	<< " op: " << (int)op << '\n';
-		//std::cin.get();
+		std::cout << "blend mode:\t"
+			<< " type: " << (int)blend_mode.type
+			<< " src: " << (int)blend_mode.src_factor << " dst: " << (int)blend_mode.dst_factor
+			<< " op: " << (int)blend_mode.op << '\n';
+		std::cin.get();
 	}
 	else
 	{
@@ -262,7 +279,7 @@ void Material::Bind() const
 	static const GLuint blend_modes[] =
 	{
 		0,	// none?
-		GL_FUNC_ADD,
+		GL_FUNC_ADD,	// BLEND??
 		GL_MAX,	// LOGIC??
 		GL_FUNC_SUBTRACT,
 	};
@@ -295,7 +312,7 @@ void Material::Bind() const
 	if (blend_mode.src_factor < 8 && blend_mode.dst_factor < 8)
 		glBlendFunc(blend_factors[blend_mode.src_factor], blend_factors[blend_mode.dst_factor]);
 
-	// TODO: not good?
+	// not good?
 	//glBlendColor((float)color[0] / 255, (float)color[1] / 255, (float)color[2] / 255, (float)color[3] / 255);
 }
 
@@ -318,6 +335,18 @@ void Material::ProcessRLTS(u8 type, u8 index, float value)
 
 		*values[index] = value;
 	}
+}
+
+void Material::ProcessRLMC(u8 index, u8 value)
+{
+	if (index < 4)
+		color[index] = value;
+	else if (index < 8)
+		color_fore[index - 4] = value;
+	else if (index < 12)
+		color_back[index - 8] = value;
+	else if (index < 16)
+		color_tevreg3[index - 12] = value;
 }
 
 void Material::AdjustTexCoords(TexCoord tc[]) const

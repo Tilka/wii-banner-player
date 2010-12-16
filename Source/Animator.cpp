@@ -45,22 +45,24 @@ void Animator::SetFrame(FrameNumber frame_number)
 	{
 		const auto frame_value = frame_handler.second.GetFrame(frame_number);
 
+		const auto& frame_type = frame_handler.first;
+
 		switch (frame_handler.first.tag)
 		{
 		case RLPA:
-			ProcessRLPA(frame_handler.first.index, frame_value);
+			ProcessRLPA(frame_type.index, frame_value);
 			break;
 
 		case RLTS:
-			ProcessRLTS(frame_handler.first.type, frame_handler.first.index, frame_value);
+			ProcessRLTS(frame_type.type, frame_type.index, frame_value);
 			break;
 
 		case RLVC:
-			ProcessRLVC(frame_handler.first.index, (u8)frame_value);
+			ProcessRLVC(frame_type.index, (u8)frame_value);
 			break;
 
 		case RLMC:
-			//ProcessRLMC(kfs.first.index, (u8)kf.value);
+			ProcessRLMC(frame_type.index, (u8)frame_value);
 			break;
 		}
 	});

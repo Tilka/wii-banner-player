@@ -41,6 +41,63 @@ distribution.
 
 #define NO_CONSOLE 0
 
+void DrawBorder()
+{
+	static const int smooth = 20;
+	static const double border = 1.05;
+	static const float bottom = 0.4f;
+
+	static const double pi = 3.141592653589793238462643;
+
+	glLoadIdentity();
+	glOrtho(-border, border, -border, border, -1, 1);
+
+	glDisable(GL_BLEND);
+	//glDisable(GL_TEXTURE);
+
+	// sides
+	glBegin(GL_QUADS);
+	// left
+	glVertex2f(-2.f, -2.f);
+	glVertex2f(-1.f, -2.f);
+	glVertex2f(-1.f, 2.f);
+	glVertex2f(-2.f, 2.f);
+	// top
+	glVertex2f(-2.f, 2.f);
+	glVertex2f(2.f, 2.f);
+	glVertex2f(2.f, 1.f);
+	glVertex2f(-2.f, 1.f);
+	// right
+	glVertex2f(1.f, -2.f);
+	glVertex2f(2.f, -2.f);
+	glVertex2f(2.f, 2.f);
+	glVertex2f(1.f, 2.f);
+	// bottom
+	glVertex2f(-2.f, -1.f + bottom);
+	glVertex2f(2.f, -1.f + bottom);
+	glVertex2f(2.f, -2.f);
+	glVertex2f(-2.f, -2.f);
+	glEnd();
+
+	// corners
+	// TODO:
+	//for (int c = 0; ; ++c)
+	//{
+	//	glBegin(GL_TRIANGLE_FAN);
+	//	glVertex2f(2.f, 2.f);
+	//	float angle = 0;
+	//	for (unsigned int i = 0; i <= smooth; ++i, angle += pi / 2 / smooth)
+	//		glVertex2f(std::sinf(angle), std::cosf(angle));
+	//	glEnd();
+
+	//	if (4 == c)
+	//		break;
+	//	glRotatef(90, 0, 0, 1);
+	//}
+
+	glEnable(GL_BLEND);
+}
+
 #if defined(_WIN32) && !defined(DEBUG) && NO_CONSOLE
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -63,9 +120,9 @@ int main(int argc, char* argv[])
 
 	WiiBanner banner(fname);
 
-	//window.SetSize(banner.GetWidth(), banner.GetHeight());
+	window.SetSize(banner.GetWidth(), banner.GetHeight());
 
-	glViewport(0, 0, banner.GetWidth(), banner.GetHeight());
+	//glViewport(0, 0, banner.GetWidth(), banner.GetHeight());
 
 	glEnable(GL_DEPTH_TEST);
     //glDepthMask(GL_TRUE);
@@ -74,15 +131,21 @@ int main(int argc, char* argv[])
 	glDepthFunc(GL_LEQUAL);
 
 	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glBlendFunc(GL_ZERO, GL_ZERO);
+	//glBlendFunc(GL_ZERO, GL_SRC_ALPHA);
 
-	//glBlendEquation(GL_ADD);
+	//glBlendEquation(GL_FUNC_ADD);
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	glEnable(GL_TEXTURE_2D);
 	glShadeModel(GL_SMOOTH);
+
+	//GLfloat max_anis;
+	//glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &max_anis);
+	//glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, max_anis);
 
 	bool banner_play = true;
 
@@ -153,6 +216,9 @@ int main(int argc, char* argv[])
 			banner.SetFrame(banner.frame_current);
 
 		banner.Render();
+
+		//glColor4f(1.f, 1.f, 1.f, 1.f);
+		//DrawBorder();
 
 		if (banner_play)
 			banner.AdvanceFrame();
