@@ -221,11 +221,11 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	{
 		file >> BE >> blend_mode.type >> blend_mode.src_factor >> blend_mode.dst_factor >> blend_mode.op;
 
-		std::cout << "blend mode:\t"
-			<< " type: " << (int)blend_mode.type
-			<< " src: " << (int)blend_mode.src_factor << " dst: " << (int)blend_mode.dst_factor
-			<< " op: " << (int)blend_mode.op << '\n';
-		std::cin.get();
+		//std::cout << "blend mode:\t"
+		//	<< " type: " << (int)blend_mode.type
+		//	<< " src: " << (int)blend_mode.src_factor << " dst: " << (int)blend_mode.dst_factor
+		//	<< " op: " << (int)blend_mode.op << '\n';
+		//std::cin.get();
 	}
 	else
 	{

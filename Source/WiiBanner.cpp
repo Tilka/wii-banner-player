@@ -469,7 +469,7 @@ WiiBanner::WiiBanner(const std::string& path)
 	//	std::cout << "x,y:\t\t" << pane->translate.x << ", " << pane->translate.y << '\n';
 	//	std::cout << "w,h:\t\t" << pane->width << ", " << pane->height << '\n';
 	//	std::cout << "scale x,y:\t" << pane->scale.x << ", " << pane->scale.y << '\n';
-	//	std::cout << "origin:\t\t" << (pane->origin % 3) << ", " << (2 - pane->origin / 3) << '\n';
+	//	std::cout << "origin:\t\t" << (pane->origin % 3) << ", " << (pane->origin / 3) << '\n';
 
 	//	std::cout << '\n';
 	//}

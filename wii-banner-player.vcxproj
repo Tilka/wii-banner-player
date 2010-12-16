@@ -172,6 +172,9 @@
       <LinkLibraryDependencies>true</LinkLibraryDependencies>
       <UseLibraryDependencyInputs>true</UseLibraryDependencyInputs>
     </ProjectReference>
+    <ProjectReference Include="Externals\sfml\build\vc2010\sfml-audio.vcxproj">
+      <Project>{b1bda469-e6a7-4af7-bdf9-eddd7ad979a2}</Project>
+    </ProjectReference>
     <ProjectReference Include="Externals\sfml\build\vc2010\sfml-system.vcxproj">
       <Project>{c061a27d-7ca0-4179-9869-672fa04a86a8}</Project>
       <Private>true</Private>

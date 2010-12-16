@@ -38,6 +38,7 @@ distribution.
 
 //#include <SFML/System.hpp>
 #include <SFML/Window.hpp>
+#include <SFML/Audio.hpp>
 
 #define NO_CONSOLE 0
 
@@ -142,6 +143,23 @@ int main(int argc, char* argv[])
 
 	glEnable(GL_TEXTURE_2D);
 	glShadeModel(GL_SMOOTH);
+
+	// test sfml-audio
+	//sf::Sound sound;
+	//sf::SoundBuffer buffer;
+	//sf::Int16 samples[5000];
+	//for (int i = 0; i != 5000; ++i)
+	//	samples[i] = rand();
+	//if (buffer.LoadFromSamples(samples, 5000, 2, 44100))
+	//{
+	//	sound.SetBuffer(buffer);
+	//	sound.SetLoop(true);
+	//	sound.SetPitch(0.5f);
+	//	sound.SetVolume(20.f);
+	//	sound.Play();
+	//	sf::Sleep(1.0f);
+	//	sound.Stop();
+	//}
 
 	//GLfloat max_anis;
 	//glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &max_anis);
