@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
 	// to get width/height without needing to have a window open first
 	sf::Window window(sf::VideoMode(608, 456, 32), "Wii Banner Player");
 
-	//glewInit();
+	glewInit();
 
 	WiiBanner banner(fname);
 
@@ -128,6 +128,9 @@ int main(int argc, char* argv[])
 	glEnable(GL_DEPTH_TEST);
     //glDepthMask(GL_TRUE);
 
+	//glEnable(GL_COLOR_LOGIC_OP);
+	//glLogicOp(GL_COPY);
+
 	// testing
 	glDepthFunc(GL_LEQUAL);
 
@@ -135,8 +138,6 @@ int main(int argc, char* argv[])
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glBlendFunc(GL_ZERO, GL_ZERO);
 	//glBlendFunc(GL_ZERO, GL_SRC_ALPHA);
-
-	//glBlendEquation(GL_FUNC_ADD);
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);

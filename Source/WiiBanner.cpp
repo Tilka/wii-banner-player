@@ -422,14 +422,29 @@ WiiBanner::WiiBanner(const std::string& path)
 			anim->CopyFrames(an, frame_loop_start);
 	};
 
+
 	auto const brlan_start_offset = banner_arc.GetFileOffset("arc/anim/Banner_Start.brlan");
-	auto const brlan_loop_offset = banner_arc.GetFileOffset("arc/anim/Banner_Loop.brlan");
+	if (brlan_start_offset)
+	{
+		// banner uses 2 brlan files, a starting one and a looping one
+		auto const brlan_loop_offset = banner_arc.GetFileOffset("arc/anim/Banner_Loop.brlan");	
 
-	file.seekg(brlan_start_offset, std::ios::beg);
-	frame_loop_start = LoadAnimators(file, add_animators);
-	file.seekg(brlan_loop_offset, std::ios::beg);
-	frame_loop_end = frame_loop_start + LoadAnimators(file, add_animators);
+		file.seekg(brlan_start_offset, std::ios::beg);
+		frame_loop_start = LoadAnimators(file, add_animators);
 
+		file.seekg(brlan_loop_offset, std::ios::beg);
+		frame_loop_end = frame_loop_start + LoadAnimators(file, add_animators);
+	}
+	else
+	{
+		// banner uses a single repeating brlan
+		auto const brlan_lone_offset = banner_arc.GetFileOffset("arc/anim/Banner.brlan");	
+
+		file.seekg(brlan_lone_offset, std::ios::beg);
+		frame_loop_end = LoadAnimators(file, add_animators);
+	}
+
+	// update everything for frame 0
 	SetFrame(frame_current);
 
 	// print the pane layout
@@ -444,11 +459,13 @@ WiiBanner::WiiBanner(const std::string& path)
 	//	group.Print(0);
 	//});
 
+	// TEMPORARY fixed language
+	static const char active_language[] = "ENG";
+
 	// hide panes depending on language
 	ForEach(groups["RootGroup"].groups, [&](const std::pair<const std::string&, const Group&> group)
 	{
-		// TEMPORARY fixed language
-		if (group.first != "ENG")
+		if (group.first != active_language)
 		{
 			ForEach(group.second.panes, [&](const std::string& pane)
 			{
@@ -458,6 +475,15 @@ WiiBanner::WiiBanner(const std::string& path)
 					pane_it->second->hide = true;
 			});
 		}
+
+		// need to unhide the correct language, some banners list language specific panes in multiple language groups
+		ForEach(groups["RootGroup"].groups[active_language].panes, [&](const std::string& pane)
+		{
+			auto const pane_it = pane_animator_map.find(pane);
+
+			if (pane_animator_map.end() != pane_it)
+				pane_it->second->hide = false;
+		});
 	});
 
 	//// for testing

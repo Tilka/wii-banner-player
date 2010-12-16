@@ -86,7 +86,7 @@ public:
 
 	struct
 	{
-		u8 type, src_factor, dst_factor, op;
+		u8 type, src_factor, dst_factor, logical_op;
 
 	} blend_mode;
 
@@ -109,6 +109,67 @@ public:
 		};
 
 	} tev_swap_mode_table[4];
+
+	struct TevStages
+	{
+		u8 texcoord;
+
+		u8 color;
+
+		u8 texmapbot;
+
+		u8 texmaptop : 1;
+		u8 ras_sel : 2;
+		u8 tex_sel : 2;
+		u8 empty1 : 3;
+
+		u8 aC : 4;
+		u8 bC : 4;
+
+		u8 cC : 4;
+		u8 dC : 4;
+
+		u8 tevscaleC : 2;
+		u8 tevbiasC : 2;
+		u8 tevopC : 4;
+
+		u8 tevregidC : 1;
+		u8 clampC : 2;
+		u8 selC : 5;
+
+		u8 aA : 4;
+		u8 bA : 4;
+
+		u8 cA : 4;
+		u8 dA : 4;
+
+		u8 tevscaleA : 2;
+		u8 tevbiasA : 2;
+		u8 tevopA : 4;
+
+		u8 tevregidA : 1;
+		u8 clampA : 2;
+		u8 selA : 5;
+
+		u8 indtexid;
+
+		u8 bias : 3;
+		u8 mtxid : 4;
+		u8 empty2 : 1;
+
+		u8 wrap_s : 3;
+		u8 wrap_t : 3;
+		u8 empty3 : 2;
+
+		u8 format : 2;
+		u8 addprev : 1;
+		u8 utclod : 1;
+		u8 aIND : 2;
+		u8 empty4 : 2;
+
+	};
+
+	std::vector<TevStages> tev_stages;
 
 	u8 color[4];
 

@@ -45,7 +45,7 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 
 	union
 	{
-		u32 hex;
+		u32 value;
 
 		struct
 		{
@@ -65,9 +65,9 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 		};
 	} flags;
 
-	file >> BE >> flags.hex;
+	file >> BE >> flags.value;
 
-	std::cout << "flags: " << flags.hex << '\n';
+	std::cout << "flags: " << flags.value << '\n';
 
 	// TextureRef
 	for (u32 i = 0; i != flags.texture_ref; ++i)
@@ -190,7 +190,9 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	// TevStage
 	for (u32 i = 0; i != flags.tev_stage; ++i)
 	{
-		file.seekg(16, std::ios::cur);
+		tev_stages.push_back(TevStages());
+
+		file.read((char*)&tev_stages.back(), sizeof(TevStages));
 
 		std::cout << "TevStage\n";
 	}
@@ -219,20 +221,20 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	// BlendMode
 	if (flags.blend_mode)
 	{
-		file >> BE >> blend_mode.type >> blend_mode.src_factor >> blend_mode.dst_factor >> blend_mode.op;
+		file >> BE >> blend_mode.type >> blend_mode.src_factor >> blend_mode.dst_factor >> blend_mode.logical_op;
 
-		//std::cout << "blend mode:\t"
-		//	<< " type: " << (int)blend_mode.type
-		//	<< " src: " << (int)blend_mode.src_factor << " dst: " << (int)blend_mode.dst_factor
-		//	<< " op: " << (int)blend_mode.op << '\n';
-		//std::cin.get();
+		std::cout << "blend mode:\t"
+			<< " type: " << (int)blend_mode.type
+			<< " src: " << (int)blend_mode.src_factor << " dst: " << (int)blend_mode.dst_factor
+			<< " op: " << (int)blend_mode.logical_op << '\n';
+		std::cin.get();
 	}
 	else
 	{
 		blend_mode.type = 1;
 		blend_mode.src_factor = 4;
 		blend_mode.dst_factor = 5;
-		//blend_mode.op = ;
+		blend_mode.logical_op = 3;
 	}
 }
 
@@ -262,55 +264,106 @@ void Material::Bind() const
 	else
 		glBindTexture(GL_TEXTURE_2D, 0);
 
-	static const GLuint alpha_funcs[] =
-	{
-		GL_NEVER,
-		GL_EQUAL,
-		GL_LEQUAL,
-		GL_GREATER,
-		GL_NOTEQUAL,
-		GL_GEQUAL,
-		GL_ALWAYS,
-	};
-
 	if ((alpha_compare.function & 0xf) < 7)
-		glAlphaFunc(alpha_funcs[alpha_compare.function & 0xf], (float)alpha_compare.ref0 / 255.f);
-
-	static const GLuint blend_modes[] =
 	{
-		0,	// none?
-		GL_FUNC_ADD,	// BLEND??
-		GL_MAX,	// LOGIC??
-		GL_FUNC_SUBTRACT,
-	};
-
-	if (blend_mode.op < 4)
-	{
-		if (blend_mode.op)
+		static const GLenum alpha_funcs[] =
 		{
-			//glEnable(GL_BLEND);
-			//glBlendEquation(blend_modes[blend_mode.type]);
+			GL_NEVER,
+			GL_EQUAL,
+			GL_LEQUAL,
+			GL_GREATER,
+			GL_NOTEQUAL,
+			GL_GEQUAL,
+			GL_ALWAYS,
+		};
+
+		glAlphaFunc(alpha_funcs[alpha_compare.function & 0xf], (float)alpha_compare.ref0 / 255.f);
+	}
+
+	if (blend_mode.type < 4)
+	{
+		static const GLenum blend_modes[] =
+		{
+			GL_MAX,	// none?
+			GL_FUNC_ADD,	// BLEND??
+			GL_FUNC_REVERSE_SUBTRACT,	// LOGIC??
+			GL_FUNC_SUBTRACT,
+		};
+
+		//if (blend_mode.type)
+		{
+			glEnable(GL_BLEND);
+			glBlendEquation(blend_modes[blend_mode.type]);
 		}
-		else
+		//else
 		{
 			//glDisable(GL_BLEND);
 		}
 	}
 
-	static const GLuint blend_factors[] =
-	{
-		GL_ZERO,
-		GL_ONE,
-		GL_SRC_COLOR,
-		GL_ONE_MINUS_SRC_COLOR,
-		GL_SRC_ALPHA,
-		GL_ONE_MINUS_SRC_ALPHA,
-		GL_DST_ALPHA,
-		GL_ONE_MINUS_DST_ALPHA,
-	};
-
 	if (blend_mode.src_factor < 8 && blend_mode.dst_factor < 8)
+	{
+		static const GLenum blend_factors[] =
+		{
+			GL_ZERO,
+			GL_ONE,
+			GL_SRC_COLOR,
+			GL_ONE_MINUS_SRC_COLOR,
+			GL_SRC_ALPHA,
+			GL_ONE_MINUS_SRC_ALPHA,
+			GL_DST_ALPHA,
+			GL_ONE_MINUS_DST_ALPHA,
+		};
+
 		glBlendFunc(blend_factors[blend_mode.src_factor], blend_factors[blend_mode.dst_factor]);
+	}
+
+	if (blend_mode.logical_op < 16)
+	{
+		static const GLenum logic_ops[] =
+		{
+			GL_CLEAR,
+			GL_AND,
+			GL_AND_REVERSE,
+			GL_COPY,
+			GL_AND_INVERTED,
+			GL_NOOP,
+			GL_XOR,
+			GL_OR,
+			GL_NOR,
+			GL_EQUIV,
+			GL_INVERT,
+			GL_OR_REVERSE,
+			GL_COPY_INVERTED,
+			GL_OR_INVERTED,
+			GL_NAND,
+			GL_SET,
+		};
+
+		glLogicOp(logic_ops[blend_mode.logical_op]);
+	}
+
+	unsigned int i = 0;
+	ForEach(tev_stages, [&](const TevStages& ts)
+	{
+		static const GLenum txts[] =
+		{
+			GL_TEXTURE0,
+			GL_TEXTURE1,
+			GL_TEXTURE2,
+			GL_TEXTURE3,
+			GL_TEXTURE4,
+		};
+
+		glActiveTexture(txts[i]);
+
+		glTexEnvi(GL_TEXTURE_ENV, GL_ALPHA_SCALE, 1 << ts.tevscaleA);
+		glTexEnvi(GL_TEXTURE_ENV, GL_RGB_SCALE, 1 << ts.tevscaleC);
+
+		++i;
+	});
+
+	glActiveTexture(GL_TEXTURE0);
 
 	// not good?
 	//glBlendColor((float)color[0] / 255, (float)color[1] / 255, (float)color[2] / 255, (float)color[3] / 255);
