@@ -244,8 +244,6 @@ void Material::Bind() const
 			
 		if (ref.texture)
 			ref.texture->Bind(0);
-		else
-			glBindTexture(GL_TEXTURE_2D, 0);
 
 		static const GLenum wraps[] =
 		{
@@ -261,6 +259,8 @@ void Material::Bind() const
 		if (ref.wrap_t < 3)
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wraps[ref.wrap_t]);
 	}
+	else
+		glBindTexture(GL_TEXTURE_2D, 0);
 
 	static const GLuint alpha_funcs[] =
 	{
