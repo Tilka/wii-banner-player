@@ -43,6 +43,15 @@ Pane::Pane(std::istream& file)
 	name = pane_name;
 }
 
+Pane::~Pane()
+{
+	// delete children
+	ForEach(panes, [](Pane* const pane)
+	{
+		delete pane;
+	});
+}
+
 void Pane::ProcessRLPA(u8 index, float value)
 {
 	float* const values[] =
@@ -71,10 +80,11 @@ void Pane::ProcessRLVI(u8 value)
 	visible = value;
 }
 
-void PaneHolder::SetFrame(FrameNumber frame)
+void Pane::SetFrame(FrameNumber frame)
 {
 	Animator::SetFrame(frame);
 
+	// setframe on children
 	ForEach(panes, [&](Pane* pane)
 	{
 		pane->SetFrame(frame);
@@ -88,36 +98,24 @@ void Pane::Render() const
 
 	glPushMatrix();
 
-	// testing
-	//glPixelTransferf(GL_ALPHA_SCALE, 0.5f);
-	//glPixelTransferf(GL_BLUE_SCALE, 0.0f);
-
 	// position
 	glTranslatef(translate.x, translate.y, translate.z);
 
-	// scale
-	glScalef(scale.x, scale.y, 1.f);
-
-	// origin
-	glTranslatef(-width / 2 * (origin % 3), -height / 2 * (2 - origin / 3), 0);
-
-	// rotations
+	// rotate
 	glRotatef(rotate.x, 1.f, 0.f, 0.f);
 	glRotatef(rotate.y, 0.f, 1.f, 0.f);
 	glRotatef(rotate.z, 0.f, 0.f, 1.f);
 
+	// scale
+	glScalef(scale.x, scale.y, 1.f);
+
 	Draw();
 
-	glPopMatrix();
-}
-
-void PaneHolder::Draw() const
-{
-	// undo origin
-	glTranslatef(width / 2 * (origin % 3), height / 2 * (2 - origin / 3), 0);
-
+	// render children
 	ForEach(panes, [](const Pane* pane)
 	{
 		pane->Render();
 	});
+
+	glPopMatrix();
 }

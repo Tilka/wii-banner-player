@@ -85,6 +85,9 @@ void Picture::Draw() const
 			vc[vert][c] = MultiplyColors(vc[vert][c], mat_back[c]);
 	}
 
+	// origin
+	glTranslatef(-width / 2 * (origin % 3), -height / 2 * (2 - origin / 3), 0);
+
 	glBegin(GL_POLYGON);
 
 	glColor4ubv(vc[2]);
@@ -104,6 +107,9 @@ void Picture::Draw() const
 	glVertex2f(0.f, height);
 
 	glEnd();
+
+	// undo origin
+	glTranslatef(width / 2 * (origin % 3), height / 2 * (2 - origin / 3), 0);
 }
 
 void Picture::ProcessRLVC(u8 index, u8 value)

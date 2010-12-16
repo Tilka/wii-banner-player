@@ -33,13 +33,6 @@ public:
 	Picture(std::istream& file, const std::vector<Material*>& materials);
 
 protected:
-	void Draw() const;
-
-	void Print(unsigned int level) const
-	{
-		std::cout << std::string(level, '\t') << "pic: " << name << '\n';
-	}
-
 	const Material* material;
 	
 	struct TexCoord tex_coords[4];
@@ -49,6 +42,7 @@ protected:
 	u16 mat_index;
 
 private:
+	void Draw() const;
 	void ProcessRLVC(u8 index, u8 value);
 };
 

@@ -236,7 +236,7 @@ WiiBanner::WiiBanner(const std::string& path)
 	std::map<std::string, Pane*> pane_animator_map;
 	std::map<std::string, Material*> mate_animator_map;
 
-	PaneHolder* last_pane = NULL;
+	Pane* last_pane = NULL;
 	std::stack<std::vector<Pane*>*> pane_stack;
 	pane_stack.push(&panes);
 
@@ -352,13 +352,14 @@ WiiBanner::WiiBanner(const std::string& path)
 		}
 		else if (header.magic == "pic1")
 		{
-			Pane* const pane = new Picture(file, materials);
-			pane_stack.top()->push_back(pane);
-			pane_animator_map[pane->name] = pane;
+			Picture* const pic = new Picture(file, materials);
+			pane_stack.top()->push_back(last_pane = pic);
+			pane_animator_map[pic->name] = pic;
 		}
-		else if (header.magic == "pan1")
+		// TODO: these "bnd1" sections seem to tell the wii the viewport for different screen sizes
+		else if (header.magic == "pan1" || header.magic == "bnd1")
 		{
-			pane_stack.top()->push_back(last_pane = new PaneHolder(file));
+			pane_stack.top()->push_back(last_pane = new Pane(file));
 			pane_animator_map[last_pane->name] = last_pane;
 		}
 		else if (header.magic == "pas1")
@@ -459,6 +460,7 @@ WiiBanner::WiiBanner(const std::string& path)
 		}
 	});
 
+	//// for testing
 	//std::string pname;
 	//while (std::getline(std::cin, pname) && pname.size())
 	//{
@@ -470,6 +472,7 @@ WiiBanner::WiiBanner(const std::string& path)
 	//	std::cout << "w,h:\t\t" << pane->width << ", " << pane->height << '\n';
 	//	std::cout << "scale x,y:\t" << pane->scale.x << ", " << pane->scale.y << '\n';
 	//	std::cout << "origin:\t\t" << (pane->origin % 3) << ", " << (pane->origin / 3) << '\n';
+	//	std::cout << "rotate: z:\t" << pane->rotate.z << '\n';
 
 	//	std::cout << '\n';
 	//}

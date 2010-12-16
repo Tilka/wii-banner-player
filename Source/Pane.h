@@ -36,14 +36,13 @@ distribution.
 class Pane : public Animator
 {
 public:
-	virtual ~Pane() {}
-
 	Pane(std::istream& file);
+	virtual ~Pane();
 
 public:
 	u8 visible;
 	u8 origin;
-	u8 alpha;		// used?
+	u8 alpha;
 
 	bool hide;	// used by the groups
 
@@ -60,31 +59,14 @@ public:
 	float width, height;
 
 	void Render() const;
-
-	virtual void Print(unsigned int level) const = 0;
-
-private:
-	virtual void Draw() const = 0;
-
-	void ProcessRLPA(u8 index, float value);
-	void ProcessRLVI(u8 value);
-};
-
-class PaneHolder : public Pane
-{
-public:
-	PaneHolder::PaneHolder(std::istream& file) : Pane(file) {}
-
 	void SetFrame(FrameNumber frame);
 
-//protected:
-	void Draw() const;
-
+	// temporary function for testing
 	void Print(unsigned int level) const
 	{
 		std::cout << std::string(level, '\t') << "pane: " << name << '\n';
 
-		ForEach(panes, [&](Pane* pane)
+		ForEach(panes, [&](const Pane* pane)
 		{
 			pane->Print(level + 1);
 		});
@@ -92,7 +74,11 @@ public:
 
 	std::vector<Pane*> panes;
 
-	GLuint framebuffer;
+private:
+	virtual void Draw() const {};
+
+	void ProcessRLPA(u8 index, float value);
+	void ProcessRLVI(u8 value);
 };
 
 #endif
