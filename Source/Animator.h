@@ -55,6 +55,7 @@ struct FrameType
 	}
 
 	const FRAME_TAG tag;
+	// TODO: remove these when i figure out all their purposes
 	const u8 type, index;
 };
 

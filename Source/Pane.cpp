@@ -23,6 +23,11 @@ distribution.
 
 #include "Pane.h"
 
+#include "WrapGx.h"
+
+// TODO: remove
+#include <gl/gl.h>
+
 Pane::Pane(std::istream& file)
 	: hide(false)
 {
@@ -98,17 +103,22 @@ void Pane::Render() const
 
 	glPushMatrix();
 
+	Mtx mt;
 	// position
-	glTranslatef(translate.x, translate.y, translate.z);
+	guMtxTrans(mt, translate.x, translate.y, translate.z);
 
 	// rotate
-	glRotatef(rotate.x, 1.f, 0.f, 0.f);
-	glRotatef(rotate.y, 0.f, 1.f, 0.f);
-	glRotatef(rotate.z, 0.f, 0.f, 1.f);
+	guVector vec = { 1.f, 0.f, 0.f };
+	guMtxRotAxisRad(mt, &vec, rotate.x);
+	vec.x = 0.f; vec.y = 1.f;
+	guMtxRotAxisRad(mt, &vec, rotate.y);
+	vec.y = 0.f; vec.z = 1.f;
+	guMtxRotAxisRad(mt, &vec, rotate.z);
 
 	// scale
-	glScalef(scale.x, scale.y, 1.f);
+	guMtxScale(mt, scale.x, scale.y, 1.f);
 
+	// render self
 	Draw();
 
 	// render children

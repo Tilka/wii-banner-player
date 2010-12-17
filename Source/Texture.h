@@ -29,39 +29,36 @@ distribution.
 
 #include "Types.h"
 
-#include <gl/glew.h>
-#include <gl/gl.h>
-#include <gl/glu.h>
+#include "WrapGx.h"
 
 class Texture
 {
 public:
 	Texture(std::istream& file);
 
-	void Bind(u32 index) const;
+	//void Bind(u32 index) const;
 
-	struct Frame
-	{
-		u16 height;
-		u16 width;
-		u32 wrap_s;
-		u32 wrap_t;
-		u32 min_filter;
-		u32 mag_filter;
-		float lod_bias;
-		u8 edge_lod;
-		u8 min_lod;
-		u8 max_lod;
-		u8 unpacked;
+	//u16 height;
+	//u16 width;
 
-		GLuint gltex;
+	//u32 wrap_s;
+	//u32 wrap_t;
 
-		void Bind() const;
-		void Load(const u8* data, u32 expanded_width, GLenum format, GLenum iformat, GLenum type);
-	};
+	//u32 min_filter;
+	//u32 mag_filter;
 
-protected:
-	std::vector<Frame> frames;
+	//float lod_bias;
+
+	//u8 edge_lod;
+	//u8 min_lod;
+	//u8 max_lod;
+
+	//u8 unpacked;
+
+	GXTexObj texobj;
+
+//protected:
+	//std::vector<Frame> frames;
 };
 
 #endif

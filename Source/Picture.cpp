@@ -23,8 +23,6 @@ distribution.
 
 #include "Picture.h"
 
-#include <gl/gl.h>
-
 // assumes u8s, takes any type to avoid multiple conversions
 template <typename C1, typename C2>
 inline u8 MultiplyColors(C1 c1, C2 c2)
@@ -86,30 +84,29 @@ void Picture::Draw() const
 	}
 
 	// origin
-	glTranslatef(-width / 2 * (origin % 3), -height / 2 * (2 - origin / 3), 0);
+	const float
+		offx = -width / 2 * (origin % 3),
+		offy = -height / 2 * (2 - origin / 3);
 
-	glBegin(GL_POLYGON);
+	GX_Begin(GX_TRIANGLEFAN, GX_VTXFMT0, 4);
 
-	glColor4ubv(vc[2]);
-	glTexCoord2f(tc[2].s, tc[2].t);
-	glVertex2f(0.f, 0.f);
+	GX_Coloru32(*(u32*)vc[2]);
+	GX_TexCoord2f32(tc[2].s, tc[2].t);
+	GX_Position3f32(0.f + offx, 0.f + offy, 0.f);
 
-	glColor4ubv(vc[3]);
-	glTexCoord2f(tc[3].s, tc[3].t);
-	glVertex2f(width, 0.f);
+	GX_Coloru32(*(u32*)vc[3]);
+	GX_TexCoord2f32(tc[3].s, tc[3].t);
+	GX_Position3f32(width + offx, 0.f + offy, 0.f);
 
-	glColor4ubv(vc[1]);
-	glTexCoord2f(tc[1].s, tc[1].t);
-	glVertex2f(width, height);
+	GX_Coloru32(*(u32*)vc[1]);
+	GX_TexCoord2f32(tc[1].s, tc[1].t);
+	GX_Position3f32(width + offx, height + offy, 0.f);
 
-	glColor4ubv(vc[0]);
-	glTexCoord2f(tc[0].s, tc[0].t);
-	glVertex2f(0.f, height);
+	GX_Coloru32(*(u32*)vc[0]);
+	GX_TexCoord2f32(tc[0].s, tc[0].t);
+	GX_Position3f32(0.f + offx, height + offy, 0.f);
 
-	glEnd();
-
-	// undo origin
-	glTranslatef(width / 2 * (origin % 3), height / 2 * (2 - origin / 3), 0);
+	GX_End();
 }
 
 void Picture::ProcessRLVC(u8 index, u8 value)

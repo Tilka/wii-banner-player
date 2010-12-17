@@ -25,10 +25,7 @@ distribution.
 
 #include "Texture.h"
 
-#include "TextureDecoder.h"
-
 static u8 g_texture_read_buffer[512 * 512 * 4];
-static u8 g_texture_decode_buffer[512 * 512 * 4];
 
 Texture::Texture(std::istream& file)
 {
@@ -45,6 +42,10 @@ Texture::Texture(std::istream& file)
 
 	// seek to end of header
 	file.seekg(header_size - 0xC, std::ios::cur);
+
+	// only support a single texture
+	if (count > 1)
+		count = 1;
 
 	// read texture offsets
 	std::streamoff next_offset = file.tellg();
@@ -69,11 +70,18 @@ Texture::Texture(std::istream& file)
 		u32 format;
 		u32 offset; // to Texture Data
 
-		Frame frame;
+		u16 height, width;
+		u32 wrap_s, wrap_t;
+		u32 min_filter, mag_filter;
 
-		file >> BE >> frame.height >> frame.width >> format >> offset
-			>> frame.wrap_s >> frame.wrap_t >> frame.min_filter >> frame.mag_filter
-			>> frame.lod_bias >> frame.edge_lod >> frame.min_lod >> frame.max_lod >> frame.unpacked;
+		float lod_bias;
+		u8 edge_lod, min_lod, max_lod;
+
+		u8 unpacked;
+
+		file >> BE >> height >> width >> format >> offset
+			>> wrap_s >> wrap_t >> min_filter >> mag_filter
+			>> lod_bias >> edge_lod >> min_lod >> max_lod >> unpacked;
 
 		// seek to texture data
 		file.seekg(file_start + offset, std::ios::beg);
@@ -82,106 +90,26 @@ Texture::Texture(std::istream& file)
 		// http://pabut.homeip.net:8000/yagcd/chap14.html#sec14.4
 		//
 
-		const u32 bsw = TexDecoder_GetBlockWidthInTexels(format) - 1;
-		const u32 bsh = TexDecoder_GetBlockHeightInTexels(format) - 1;
+		const u32 tex_size = GX_GetTexBufferSize(width, height, format, true, max_lod);
 
-		const u32 expanded_width  = (frame.width  + bsw) & (~bsw);
-		const u32 expanded_height = (frame.height + bsh) & (~bsh);
-
-		const int tex_size = TexDecoder_GetTextureSizeInBytes(expanded_width, expanded_height, format);
-
-		GLenum gl_format, gl_iformat, gl_type = 0;
-
-		if (tex_size > sizeof(g_texture_read_buffer) || (frame.width * frame.height * 4) > sizeof(g_texture_decode_buffer))
+		if (tex_size > sizeof(g_texture_read_buffer))
 			std::cout << "texture is too large\n";
 		else
 		{
 			file.read((char*)g_texture_read_buffer, tex_size);
 
-			auto const pcfmt = TexDecoder_Decode(g_texture_decode_buffer,
-				g_texture_read_buffer, expanded_width, expanded_height, format, 0, 0);
+			// load the texture
+			GX_InitTexObj(&texobj, g_texture_read_buffer,
+				width, height, format, wrap_s, wrap_t, true);
 
-			switch (pcfmt)
-			{
-			default:
-			case PC_TEX_FMT_NONE:
-				std::cout << "Error decoding texture!!!\n";
-
-			case PC_TEX_FMT_BGRA32:
-				gl_format = GL_BGRA;
-				gl_iformat = 4;
-				gl_type = GL_UNSIGNED_BYTE;
-				break;
-
-			case PC_TEX_FMT_RGBA32:
-				gl_format = GL_RGBA;
-				gl_iformat = 4;
-				gl_type = GL_UNSIGNED_BYTE;
-				break;
-
-			case PC_TEX_FMT_I4_AS_I8:
-				gl_format = GL_LUMINANCE;
-				gl_iformat = GL_INTENSITY4;
-				gl_type = GL_UNSIGNED_BYTE;
-				break;
-
-			case PC_TEX_FMT_IA4_AS_IA8:
-				gl_format = GL_LUMINANCE_ALPHA;
-				gl_iformat = GL_LUMINANCE4_ALPHA4;
-				gl_type = GL_UNSIGNED_BYTE;
-				break;
-
-			case PC_TEX_FMT_I8:
-				gl_format = GL_LUMINANCE;
-				gl_iformat = GL_INTENSITY8;
-				gl_type = GL_UNSIGNED_BYTE;
-				break;
-
-			case PC_TEX_FMT_IA8:
-				gl_format = GL_LUMINANCE_ALPHA;
-				gl_iformat = GL_LUMINANCE8_ALPHA8;
-				gl_type = GL_UNSIGNED_BYTE;
-				break;
-
-			case PC_TEX_FMT_RGB565:
-				gl_format = GL_RGB;
-				gl_iformat = GL_RGB;
-				gl_type = GL_UNSIGNED_SHORT_5_6_5;
-				break;
-			}
+			// filter mode
+			GX_InitTexObjFilterMode(&texobj, min_filter, mag_filter);
 		}
-
-		frame.Load(g_texture_decode_buffer, expanded_width, gl_format, gl_iformat, gl_type);
-
-		frames.push_back(frame);
 	}
 }
 
-void Texture::Bind(u32 index) const
-{
-	if (index < frames.size())
-		frames[index].Bind();
-}
-
-void Texture::Frame::Bind() const
-{
-	glBindTexture(GL_TEXTURE_2D, gltex);
-
-	// TODO: set texture params
-}
-
-void Texture::Frame::Load(const u8* data, u32 expanded_width, GLenum format, GLenum iformat, GLenum type)
-{
-	glGenTextures(1, &gltex);
-	glBindTexture(GL_TEXTURE_2D, gltex);
-
-	if (expanded_width != width)
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, expanded_width);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
-	glTexImage2D(GL_TEXTURE_2D, 0, iformat, width, height, 0, format, type, data);
-	glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_FALSE);
-
-	if (expanded_width != width)
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-}
+//void Texture::Bind(u32 index) const
+//{
+//	//if (index < frames.size())
+//		//frames[index].Bind();
+//}

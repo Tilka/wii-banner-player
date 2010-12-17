@@ -23,6 +23,8 @@ distribution.
 
 #include "Material.h"
 
+#include "WrapGx.h"
+
 // TODO: put SAFE_ARRAY_VALUE stuff elsewhere
 #define ARRAY_LENGTH(a) (sizeof(a)/sizeof(*a))
 #define SAFE_ARRAY_VALUE(a, x) (((x) < ARRAY_LENGTH(a)) ? (a[x]) : (a[0]))
@@ -123,10 +125,10 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 		if (color_matsrc != alpha_matsrc)
 		{
 			//std::cout << "color: " << (int)color_matsrc
-				//<< " alpha: " << (int)alpha_matsrc
-				//<< " pad1: " << (int)pad1
-				//<< " pad2: " << (int)pad2
-				//<< '\n';
+			//	<< " alpha: " << (int)alpha_matsrc
+			//	//<< " pad1: " << (int)pad1
+			//	//<< " pad2: " << (int)pad2
+			//	<< '\n';
 			//std::cin.get();
 		}
 
@@ -223,11 +225,11 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	{
 		file >> BE >> blend_mode.type >> blend_mode.src_factor >> blend_mode.dst_factor >> blend_mode.logical_op;
 
-		std::cout << "blend mode:\t"
-			<< " type: " << (int)blend_mode.type
-			<< " src: " << (int)blend_mode.src_factor << " dst: " << (int)blend_mode.dst_factor
-			<< " op: " << (int)blend_mode.logical_op << '\n';
-		std::cin.get();
+		//std::cout << "blend mode:\t"
+		//	<< " type: " << (int)blend_mode.type
+		//	<< " src: " << (int)blend_mode.src_factor << " dst: " << (int)blend_mode.dst_factor
+		//	<< " op: " << (int)blend_mode.logical_op << '\n';
+		//std::cin.get();
 	}
 	else
 	{
@@ -240,130 +242,54 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 
 void Material::Bind() const
 {
+	// bind the texture
 	if (texture_refs.size())
 	{
 		const TextureRef& ref = texture_refs.front();
 			
 		if (ref.texture)
-			ref.texture->Bind(0);
-
-		static const GLenum wraps[] =
 		{
-			GL_CLAMP,
-			GL_REPEAT,
-			GL_MIRRORED_REPEAT,
-			// TODO: there are more...
-		};
+			//ref.texture->Bind(0);
 
-		if (ref.wrap_s < 3)
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wraps[ref.wrap_s]);
-
-		if (ref.wrap_t < 3)
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wraps[ref.wrap_t]);
-	}
-	else
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-	if ((alpha_compare.function & 0xf) < 7)
-	{
-		static const GLenum alpha_funcs[] =
-		{
-			GL_NEVER,
-			GL_EQUAL,
-			GL_LEQUAL,
-			GL_GREATER,
-			GL_NOTEQUAL,
-			GL_GEQUAL,
-			GL_ALWAYS,
-		};
-
-		glAlphaFunc(alpha_funcs[alpha_compare.function & 0xf], (float)alpha_compare.ref0 / 255.f);
-	}
-
-	if (blend_mode.type < 4)
-	{
-		static const GLenum blend_modes[] =
-		{
-			GL_MAX,	// none?
-			GL_FUNC_ADD,	// BLEND??
-			GL_FUNC_REVERSE_SUBTRACT,	// LOGIC??
-			GL_FUNC_SUBTRACT,
-		};
-
-		//if (blend_mode.type)
-		{
-			glEnable(GL_BLEND);
-			glBlendEquation(blend_modes[blend_mode.type]);
+			GX_InitTexObjWrapMode(&ref.texture->texobj, ref.wrap_s, ref.wrap_t);
 		}
-		//else
-		{
-			//glDisable(GL_BLEND);
-		}
+
+		// set wrap mode here??
 	}
+	//else
+		//glBindTexture(GL_TEXTURE_2D, 0);
 
-	if (blend_mode.src_factor < 8 && blend_mode.dst_factor < 8)
-	{
-		static const GLenum blend_factors[] =
-		{
-			GL_ZERO,
-			GL_ONE,
-			GL_SRC_COLOR,
-			GL_ONE_MINUS_SRC_COLOR,
-			GL_SRC_ALPHA,
-			GL_ONE_MINUS_SRC_ALPHA,
-			GL_DST_ALPHA,
-			GL_ONE_MINUS_DST_ALPHA,
-		};
+	// alpha compare
+	GX_SetAlphaCompare(alpha_compare.function & 0xf, alpha_compare.ref0,
+		alpha_compare.aop, alpha_compare.function >> 4, alpha_compare.ref1);
 
-		glBlendFunc(blend_factors[blend_mode.src_factor], blend_factors[blend_mode.dst_factor]);
-	}
+	// blend mode
+	GX_SetBlendMode(blend_mode.type, blend_mode.src_factor, blend_mode.dst_factor, blend_mode.logical_op);
 
-	if (blend_mode.logical_op < 16)
-	{
-		static const GLenum logic_ops[] =
-		{
-			GL_CLEAR,
-			GL_AND,
-			GL_AND_REVERSE,
-			GL_COPY,
-			GL_AND_INVERTED,
-			GL_NOOP,
-			GL_XOR,
-			GL_OR,
-			GL_NOR,
-			GL_EQUIV,
-			GL_INVERT,
-			GL_OR_REVERSE,
-			GL_COPY_INVERTED,
-			GL_OR_INVERTED,
-			GL_NAND,
-			GL_SET,
-		};
-
-		glLogicOp(logic_ops[blend_mode.logical_op]);
-	}
-
+	// tev stages
 	unsigned int i = 0;
 	ForEach(tev_stages, [&](const TevStages& ts)
 	{
-		static const GLenum txts[] =
-		{
-			GL_TEXTURE0,
-			GL_TEXTURE1,
-			GL_TEXTURE2,
-			GL_TEXTURE3,
-			GL_TEXTURE4,
-		};
+		// TODO: these all good?
 
-		glActiveTexture(txts[i]);
+		GX_SetTevOrder(i, ts.texcoord, ((u32)ts.texmaptop << 8) | ts.texmapbot, ts.color);
+		GX_SetTevSwapMode(i, ts.ras_sel, ts.tex_sel);
 
-		glTexEnvi(GL_TEXTURE_ENV, GL_ALPHA_SCALE, 1 << ts.tevscaleA);
-		glTexEnvi(GL_TEXTURE_ENV, GL_RGB_SCALE, 1 << ts.tevscaleC);
+		GX_SetTevIndirect(i, ts.indtexid, ts.format, ts.bias, ts.mtxid, 
+			ts.wrap_s, ts.wrap_t, ts.addprev, ts.utclod, ts.aIND);
+
+		GX_SetTevColorIn(i, ts.aC, ts.bC, ts.cC, ts.dC);
+		GX_SetTevColorOp(i, ts.tevopC, ts.tevbiasC, ts.tevscaleC, ts.clampC, ts.tevregidC);
+		GX_SetTevKColorSel(i, ts.selC);
+
+		GX_SetTevAlphaIn(i, ts.aA, ts.bA, ts.cA, ts.dA);
+		GX_SetTevAlphaOp(i, ts.tevopA, ts.tevbiasA, ts.tevscaleA, ts.clampA, ts.tevregidA);
+		GX_SetTevKAlphaSel(i, ts.selA);
 
 		++i;
 	});
 
-	glActiveTexture(GL_TEXTURE0);
+	//glActiveTexture(GL_TEXTURE0);
 
 	// not good?
 	//glBlendColor((float)color[0] / 255, (float)color[1] / 255, (float)color[2] / 255, (float)color[3] / 255);

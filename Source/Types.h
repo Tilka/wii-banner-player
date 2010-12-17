@@ -158,8 +158,10 @@ void ForEachReverse(C& container, F func)
 template <typename T>
 void ReadBEArray(std::istream& file, T* data, unsigned int size)
 {
+	auto& bestrm = file >> BE;
+
 	for (unsigned int i = 0; i != size; ++i)
-		file >> BE >> data[i];
+		bestrm >> data[i];
 }
 
 #endif

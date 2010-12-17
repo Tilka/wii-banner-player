@@ -519,14 +519,13 @@ void WiiBanner::SetFrame(FrameNumber frame_number)
 
 void WiiBanner::Render()
 {
-	glLoadIdentity();
-	//gluOrtho2D(-width, 0, -height, 0);
-	glOrtho(-width, 0, -height, 0, -1000, 1000);
+	Mtx mt;
+	guMtxIdentity(mt);
+
+	guOrtho(mt, 0, -height, -width, 0, -1000, 1000);
 
 	if (centered)
-		glTranslatef(-width / 2, -height / 2, 0);
-
-	//std::cout << (int)centered << '\n';
+		guMtxTrans(mt, -width / 2, -height / 2, 0);
 
 	// usually there is only one root pane, probably always
 	ForEach(panes, [&](Pane* pane)

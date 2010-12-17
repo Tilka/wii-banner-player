@@ -144,6 +144,7 @@
     <ClCompile Include="Source\Picture.cpp" />
     <ClCompile Include="Source\Texture.cpp" />
     <ClCompile Include="Source\WiiBanner.cpp" />
+    <ClCompile Include="Source\WrapGx.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Animator.h" />
@@ -154,6 +155,7 @@
     <ClInclude Include="Source\Texture.h" />
     <ClInclude Include="Source\Types.h" />
     <ClInclude Include="Source\WiiBanner.h" />
+    <ClInclude Include="Source\WrapGx.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="Externals\dolphin-emu\dolphin-emu.vcxproj">

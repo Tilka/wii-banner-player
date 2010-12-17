@@ -32,11 +32,10 @@ distribution.
 #include <sstream>
 #include <string>
 
-#include <GL/glew.h>
+#include "WrapGx.h"
 
 #include "WiiBanner.h"
 
-//#include <SFML/System.hpp>
 #include <SFML/Window.hpp>
 #include <SFML/Audio.hpp>
 
@@ -45,7 +44,7 @@ distribution.
 void DrawBorder()
 {
 	static const int smooth = 20;
-	static const double border = 1.05;
+	static const double border = 1.10;
 	static const float bottom = 0.4f;
 
 	static const double pi = 3.141592653589793238462643;
@@ -117,7 +116,7 @@ int main(int argc, char* argv[])
 	// to get width/height without needing to have a window open first
 	sf::Window window(sf::VideoMode(608, 456, 32), "Wii Banner Player");
 
-	glewInit();
+	GX_Init(0, 0);
 
 	WiiBanner banner(fname);
 
@@ -132,18 +131,15 @@ int main(int argc, char* argv[])
 	//glLogicOp(GL_COPY);
 
 	// testing
-	glDepthFunc(GL_LEQUAL);
+	glDepthFunc(GL_ALWAYS);
 
 	glEnable(GL_BLEND);
-	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glBlendFunc(GL_ZERO, GL_ZERO);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//glBlendFunc(GL_ZERO, GL_ZERO);
 	//glBlendFunc(GL_ZERO, GL_SRC_ALPHA);
 
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
 	glEnable(GL_TEXTURE_2D);
-	glShadeModel(GL_SMOOTH);
+	glShadeModel(GL_SMOOTH);	// whats this even do? :p
 
 	// test sfml-audio
 	//sf::Sound sound;

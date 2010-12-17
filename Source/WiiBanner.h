@@ -29,6 +29,8 @@ distribution.
 #include <stack>
 #include <fstream>
 
+#include "WrapGx.h"
+
 #include "Animator.h"
 #include "Material.h"
 #include "Pane.h"

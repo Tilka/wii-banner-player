@@ -30,9 +30,6 @@ distribution.
 
 #include "Animator.h"
 
-// TODO: put opengl code elsewhere
-#include <gl/glew.h>
-
 class Pane : public Animator
 {
 public:
