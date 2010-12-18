@@ -188,7 +188,6 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 		//std::cin.get();
 	}
 
-	// TODO:
 	// TevStage
 	for (u32 i = 0; i != flags.tev_stage; ++i)
 	{
@@ -242,22 +241,20 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 
 void Material::Bind() const
 {
-	// bind the texture
-	if (texture_refs.size())
+	// bind textures
 	{
-		const TextureRef& ref = texture_refs.front();
-			
-		if (ref.texture)
+	unsigned int i = 0;
+	ForEach(texture_refs, [&](const TextureRef& tr)
+	{
+		if (tr.texture)
 		{
-			//ref.texture->Bind(0);
-
-			GX_InitTexObjWrapMode(&ref.texture->texobj, ref.wrap_s, ref.wrap_t);
+			GX_LoadTexObj(&tr.texture->texobj, i);
+			GX_InitTexObjWrapMode(&tr.texture->texobj, tr.wrap_s, tr.wrap_t);
 		}
 
-		// set wrap mode here??
+		++i;
+	});
 	}
-	//else
-		//glBindTexture(GL_TEXTURE_2D, 0);
 
 	// alpha compare
 	GX_SetAlphaCompare(alpha_compare.function & 0xf, alpha_compare.ref0,
@@ -267,6 +264,8 @@ void Material::Bind() const
 	GX_SetBlendMode(blend_mode.type, blend_mode.src_factor, blend_mode.dst_factor, blend_mode.logical_op);
 
 	// tev stages
+	//if (name.find("Logo") != std::string::npos)
+	{
 	unsigned int i = 0;
 	ForEach(tev_stages, [&](const TevStages& ts)
 	{
@@ -289,7 +288,30 @@ void Material::Bind() const
 		++i;
 	});
 
-	//glActiveTexture(GL_TEXTURE0);
+	if (!i)
+	{
+		// no tev stages defined, set up a default one
+
+		GX_SetTevOrder(0, 0, 0, 0);
+		//GX_SetTevSwapMode(0, ts.ras_sel, ts.tex_sel);
+
+		//GX_SetTevIndirect(0, ts.indtexid, ts.format, ts.bias, ts.mtxid, 
+			//ts.wrap_s, ts.wrap_t, ts.addprev, ts.utclod, ts.aIND);
+
+		GX_SetTevColorIn(0, 0xf, 10, 8, 0xf);
+		GX_SetTevColorOp(0, 0, 0, 1, 0, 0);
+		//GX_SetTevKColorSel(0, ts.selC);
+
+		GX_SetTevAlphaIn(0, 0x7, 5, 4, 0x7);
+		GX_SetTevAlphaOp(0, 0, 0, 1, 0, 0);
+		//GX_SetTevKAlphaSel(0, ts.selA);
+	}
+	}
+
+	// enable correct number of stages
+	//GX_SetNumTevStages(tev_stages.size());
+	GX_SetNumTevStages(std::max((size_t)1, tev_stages.size()));
+	//GX_SetNumTevStages(1);
 
 	// not good?
 	//glBlendColor((float)color[0] / 255, (float)color[1] / 255, (float)color[2] / 255, (float)color[3] / 255);

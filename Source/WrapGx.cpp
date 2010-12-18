@@ -68,7 +68,7 @@ void 	GX_InitTexObj (GXTexObj *obj, void *img_ptr, u16 wd, u16 ht, u8 fmt, u8 wr
 
 	// decode texture
 	auto const pcfmt = TexDecoder_Decode(g_texture_decode_buffer,
-		(u8*)img_ptr, expanded_width, expanded_height, fmt, 0, 0);
+		(u8*)img_ptr, expanded_width, expanded_height, fmt, 0, 0, true);
 
 	// load texture
 	switch (pcfmt)
@@ -139,10 +139,10 @@ void 	GX_InitTexObjWrapMode (GXTexObj *obj, u8 wrap_s, u8 wrap_t)
 
 	static const GLenum wraps[] =
 	{
-		GL_CLAMP,
+		GL_CLAMP_TO_EDGE,
 		GL_REPEAT,
 		GL_MIRRORED_REPEAT,
-		// TODO: there are more...
+		GL_REPEAT,
 	};
 
 	if (wrap_s < ARRAY_LENGTH(wraps))
@@ -327,85 +327,210 @@ void 	guMtxScale (Mtx mt, f32 xS, f32 yS, f32 zS)
 	glScalef(xS, yS, zS);
 }
 
+GLuint g_texture_slots[8] = {};
+
+void 	GX_LoadTexObj (GXTexObj *obj, u8 mapid)
+{
+	const GLTexObj& txobj = *(GLTexObj*)obj;
+
+	g_texture_slots[mapid & 0x7] = txobj.tex;
+}
+
 void 	guMtxRotAxisRad (Mtx mt, guVector *axis, f32 rad)
 {
 	glRotatef(rad, axis->x, axis->y, axis->z);
 }
 
-static const GLenum textures[] =
+inline void ActiveState(u8 stage)
 {
-	GL_TEXTURE0,
-	GL_TEXTURE1,
-	GL_TEXTURE2,
-	GL_TEXTURE3,
-	GL_TEXTURE4,
-};
+	glActiveTexture(GL_TEXTURE0 + stage);
+}
 
 void 	GX_SetTevOrder (u8 tevstage, u8 texcoord, u32 texmap, u8 color)
 {
+	ActiveState(tevstage);
 
+	// TODO: support texture disable n crap?
+
+	glBindTexture(GL_TEXTURE_2D, g_texture_slots[texmap & 7]);
+
+	//glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_DOT3_RGBA);
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
+	glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_INTERPOLATE);
+	glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_INTERPOLATE);
+
+	// messin around
+	//glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+	//glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+	//glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
+	//glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
+	//glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
 }
 
 void 	GX_SetTevSwapMode (u8 tevstage, u8 ras_sel, u8 tex_sel)
 {
+	ActiveState(tevstage);
 
+	// TODO:
 }
 
 void 	GX_SetTevIndirect (u8 tevstage, u8 indtexid, u8 format, u8 bias, u8 mtxid,
 	u8 wrap_s, u8 wrap_t, u8 addprev, u8 utclod, u8 a)
 {
-
+	ActiveState(tevstage);
 }
+
+static const GLuint combine_ops[] =
+{
+	GL_ADD,
+	GL_DECAL,
+	GL_MODULATE,
+	GL_BLEND, // TODO: passclear
+	GL_REPLACE,
+};
 
 void 	GX_SetTevKAlphaSel (u8 tevstage, u8 sel)
 {
-
+	ActiveState(tevstage);
 }
 
 void 	GX_SetTevKColorSel (u8 tevstage, u8 sel)
 {
-
+	ActiveState(tevstage);
 }
+
+static const GLint alpha_combiner_inputs[] =
+{
+	GL_PREVIOUS,
+	GL_PREVIOUS,	// GX_CA_A0
+	GL_PREVIOUS,	// GX_CA_A0 
+	GL_PREVIOUS,	// GX_CA_A1
+	GL_TEXTURE,
+	GL_PREVIOUS,	// TODO: rasterizer
+	GL_CONSTANT,
+	GL_ZERO,
+};
+
+static const GLint alpha_combiner_first_inputs[] =
+{
+	GL_PREVIOUS,
+	GL_ZERO,	// GX_CA_A0
+	GL_ONE,	// GX_CA_A0
+	GL_PREVIOUS,	// GX_CA_A1
+	GL_TEXTURE,
+	GL_PRIMARY_COLOR,	// TODO: rasterizer
+	GL_CONSTANT,
+	GL_ZERO,
+};
 
 void 	GX_SetTevAlphaIn (u8 tevstage, u8 a, u8 b, u8 c, u8 d)
 {
+	ActiveState(tevstage);
 
+	//return;
+
+	//glColor4ub(0xff, 0xff, 0xff, 0xff);
+
+	glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_ALPHA, alpha_combiner_first_inputs[b & 0x7]);
+	glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_ALPHA, alpha_combiner_first_inputs[a & 0x7]);
+	glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE2_ALPHA, alpha_combiner_first_inputs[c & 0x7]);
+
+	glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
+	glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
+	glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND2_ALPHA, GL_SRC_ALPHA);
 }
 
 void 	GX_SetTevAlphaOp (u8 tevstage, u8 tevop, u8 tevbias, u8 tevscale, u8 clamp, u8 tevregid)
 {
-	//glActiveTexture(textures[tevstage]);
+	ActiveState(tevstage);
 
-	//glTexEnvi(GL_TEXTURE_ENV, GL_ALPHA_SCALE, 1 << tevscale);
+	glTexEnvi(GL_TEXTURE_ENV, GL_ALPHA_SCALE, tevscale);
 
-	const float
-		bias = (float)tevbias / 255,
-		scale = (float)tevscale / 255;
+	//glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_MODULATE);
 
-	glPixelTransferf(GL_ALPHA_BIAS, bias);
-	glPixelTransferf(GL_ALPHA_SCALE, scale);
+	//const float
+	//	bias = (float)tevbias / 255,
+	//	scale = (float)tevscale / 255;
+
+	//glPixelTransferf(GL_ALPHA_BIAS, bias);
+	//glPixelTransferf(GL_ALPHA_SCALE, scale);
 }
+
+static const GLint color_combiner_inputs[] =
+{
+	GL_PREVIOUS,
+	GL_PREVIOUS,	// TODO: alpha
+	GL_PRIMARY_COLOR,//GL_SRC0_RGB,
+	GL_PRIMARY_COLOR,//GL_SRC0_ALPHA,
+	GL_PRIMARY_COLOR,//GL_SRC1_RGB,
+	GL_PRIMARY_COLOR,//GL_SRC1_ALPHA,
+	GL_PRIMARY_COLOR,//GL_SRC2_RGB,
+	GL_PRIMARY_COLOR,//GL_SRC2_ALPHA,
+	GL_TEXTURE,
+	GL_TEXTURE,	// TODO: alpha
+	GL_PRIMARY_COLOR,	// ras
+	GL_PRIMARY_COLOR,	// ras
+	GL_PRIMARY_COLOR,
+	GL_PREVIOUS,	// half
+	GL_CONSTANT,
+	GL_ZERO,
+};
 
 void 	GX_SetTevColorIn (u8 tevstage, u8 a, u8 b, u8 c, u8 d)
 {
+	ActiveState(tevstage);
 
+	glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_RGB, color_combiner_inputs[b & 0xf]);
+	glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_RGB, color_combiner_inputs[a & 0xf]);
+	glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE2_RGB, color_combiner_inputs[c & 0xf]);
+
+	glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_RGB, GL_SRC_COLOR);
+	glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_RGB, GL_SRC_COLOR);
+	glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND2_RGB, GL_SRC_COLOR);
 }
 
 void 	GX_SetTevColorOp (u8 tevstage, u8 tevop, u8 tevbias, u8 tevscale, u8 clamp, u8 tevregid)
 {
-	//glActiveTexture(textures[tevstage]);
+	ActiveState(tevstage);
 
-	//glTexEnvi(GL_TEXTURE_ENV, GL_RGB_SCALE, 1 << tevscale);
+	glTexEnvi(GL_TEXTURE_ENV, GL_RGB_SCALE, tevscale);
+
+	//glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_MODULATE);
 	
-	const float
-		bias = (float)tevbias / 255,
-		scale = (float)tevscale / 255;
+	//const float
+	//	bias = (float)tevbias / 255,
+	//	scale = (float)tevscale / 255;
 
-	glPixelTransferf(GL_RED_BIAS, bias);
-	glPixelTransferf(GL_BLUE_BIAS, bias);
-	glPixelTransferf(GL_GREEN_BIAS, bias);
+	//glPixelTransferf(GL_RED_BIAS, bias);
+	//glPixelTransferf(GL_BLUE_BIAS, bias);
+	//glPixelTransferf(GL_GREEN_BIAS, bias);
 
-	glPixelTransferf(GL_RED_SCALE, scale);
-	glPixelTransferf(GL_BLUE_SCALE, scale);
-	glPixelTransferf(GL_GREEN_SCALE, scale);
+	//glPixelTransferf(GL_RED_SCALE, scale);
+	//glPixelTransferf(GL_BLUE_SCALE, scale);
+	//glPixelTransferf(GL_GREEN_SCALE, scale);
+}
+
+void 	GX_SetNumTevStages (u8 num)
+{
+	static u8 current_num = 0;
+
+	// enable stages
+	while (current_num < num)
+	{
+		ActiveState(current_num);
+		glEnable(GL_TEXTURE_2D);
+		//glEnable(GL_TEXTURE_RECTANGLE_ARB);
+
+		++current_num;
+	}
+
+	// disable stages
+	while (current_num > num)
+	{
+		--current_num;
+
+		ActiveState(current_num);
+		glDisable(GL_TEXTURE_2D);
+		//glDisable(GL_TEXTURE_RECTANGLE_ARB);
+	}
 }

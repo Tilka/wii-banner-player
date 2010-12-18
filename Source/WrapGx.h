@@ -38,6 +38,8 @@ void 	GX_InitTexObj (GXTexObj *obj, void *img_ptr, u16 wd, u16 ht, u8 fmt, u8 wr
 void 	GX_InitTexObjWrapMode (GXTexObj *obj, u8 wrap_s, u8 wrap_t);
 void 	GX_InitTexObjFilterMode (GXTexObj *obj, u8 minfilt, u8 magfilt);
 
+void 	GX_LoadTexObj (GXTexObj *obj, u8 mapid);
+
 void 	GX_Begin (u8 primitve, u8 vtxfmt, u16 vtxcnt);
 void 	GX_End ();
 
@@ -65,6 +67,8 @@ void 	GX_SetTevAlphaOp (u8 tevstage, u8 tevop, u8 tevbias, u8 tevscale, u8 clamp
 
 void 	GX_SetTevColorIn (u8 tevstage, u8 a, u8 b, u8 c, u8 d);
 void 	GX_SetTevColorOp (u8 tevstage, u8 tevop, u8 tevbias, u8 tevscale, u8 clamp, u8 tevregid);
+
+void 	GX_SetNumTevStages (u8 num);
 
 void 	guMtxIdentity (Mtx mt);
 void 	guMtxRotAxisRad (Mtx mt, guVector *axis, f32 rad);

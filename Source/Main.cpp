@@ -124,6 +124,8 @@ int main(int argc, char* argv[])
 
 	//glViewport(0, 0, banner.GetWidth(), banner.GetHeight());
 
+	glMatrixMode(GL_MODELVIEW);
+
 	glEnable(GL_DEPTH_TEST);
     //glDepthMask(GL_TRUE);
 
@@ -138,7 +140,7 @@ int main(int argc, char* argv[])
 	//glBlendFunc(GL_ZERO, GL_ZERO);
 	//glBlendFunc(GL_ZERO, GL_SRC_ALPHA);
 
-	glEnable(GL_TEXTURE_2D);
+	//glEnable(GL_TEXTURE_2D);
 	glShadeModel(GL_SMOOTH);	// whats this even do? :p
 
 	// test sfml-audio
