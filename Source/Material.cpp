@@ -25,6 +25,8 @@ distribution.
 
 #include "WrapGx.h"
 
+//#include <gl/glew.h>
+
 // TODO: put SAFE_ARRAY_VALUE stuff elsewhere
 #define ARRAY_LENGTH(a) (sizeof(a)/sizeof(*a))
 #define SAFE_ARRAY_VALUE(a, x) (((x) < ARRAY_LENGTH(a)) ? (a[x]) : (a[0]))
@@ -191,9 +193,9 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	// TevStage
 	for (u32 i = 0; i != flags.tev_stage; ++i)
 	{
-		tev_stages.push_back(TevStages());
+		tev_stages.push_back(TevStage());
 
-		file.read((char*)&tev_stages.back(), sizeof(TevStages));
+		file.read((char*)&tev_stages.back(), sizeof(TevStage));
 
 		std::cout << "TevStage\n";
 	}
@@ -243,6 +245,8 @@ void Material::Bind() const
 {
 	// bind textures
 	{
+	//glMatrixMode(GL_TEXTURE);
+
 	unsigned int i = 0;
 	ForEach(texture_refs, [&](const TextureRef& tr)
 	{
@@ -250,10 +254,18 @@ void Material::Bind() const
 		{
 			GX_LoadTexObj(&tr.texture->texobj, i);
 			GX_InitTexObjWrapMode(&tr.texture->texobj, tr.wrap_s, tr.wrap_t);
+
+			//// temporary
+			//glLoadIdentity();
+			//glTranslatef(tr.translate.x, tr.translate.y, 0.f);
+			//glRotatef(tr.rotate, 0.f, 0.f, 1.f);
+			//glScalef(tr.scale.x, tr.scale.y, 0.f);
 		}
 
 		++i;
 	});
+
+	//glMatrixMode(GL_MODELVIEW);
 	}
 
 	// alpha compare
@@ -264,13 +276,10 @@ void Material::Bind() const
 	GX_SetBlendMode(blend_mode.type, blend_mode.src_factor, blend_mode.dst_factor, blend_mode.logical_op);
 
 	// tev stages
-	//if (name.find("Logo") != std::string::npos)
 	{
-	unsigned int i = 0;
-	ForEach(tev_stages, [&](const TevStages& ts)
+	int i = 0;
+	ForEach(tev_stages, [&](const TevStage& ts)
 	{
-		// TODO: these all good?
-
 		GX_SetTevOrder(i, ts.texcoord, ((u32)ts.texmaptop << 8) | ts.texmapbot, ts.color);
 		GX_SetTevSwapMode(i, ts.ras_sel, ts.tex_sel);
 
@@ -288,32 +297,51 @@ void Material::Bind() const
 		++i;
 	});
 
-	if (!i)
+	// no tev stages defined, set up defaults
+	if (0 == i)
 	{
-		// no tev stages defined, set up a default one
+		// one stage each texture reference, i guess?
+		ForEach(texture_refs, [&](const TextureRef& tr)
+		{
+			GX_SetTevOrder(i, 0, i, 0);
+			//GX_SetTevSwapMode(0, ts.ras_sel, ts.tex_sel);
 
-		GX_SetTevOrder(0, 0, 0, 0);
-		//GX_SetTevSwapMode(0, ts.ras_sel, ts.tex_sel);
+			//GX_SetTevIndirect(0, ts.indtexid, ts.format, ts.bias, ts.mtxid, 
+				//ts.wrap_s, ts.wrap_t, ts.addprev, ts.utclod, ts.aIND);
 
-		//GX_SetTevIndirect(0, ts.indtexid, ts.format, ts.bias, ts.mtxid, 
-			//ts.wrap_s, ts.wrap_t, ts.addprev, ts.utclod, ts.aIND);
+			GX_SetTevColorIn(i, 0xf, 8, 10, 0xf);
+			GX_SetTevColorOp(i, 0, 0, 0, 0, 0);
+			//GX_SetTevKColorSel(0, ts.selC);
 
-		GX_SetTevColorIn(0, 0xf, 10, 8, 0xf);
-		GX_SetTevColorOp(0, 0, 0, 1, 0, 0);
-		//GX_SetTevKColorSel(0, ts.selC);
+			GX_SetTevAlphaIn(i, 0x7, 4, 5, 0x7);
+			GX_SetTevAlphaOp(i, 0, 0, 0, 0, 0);
+			//GX_SetTevKAlphaSel(0, ts.selA);
 
-		GX_SetTevAlphaIn(0, 0x7, 5, 4, 0x7);
-		GX_SetTevAlphaOp(0, 0, 0, 1, 0, 0);
-		//GX_SetTevKAlphaSel(0, ts.selA);
+			++i;
+		});
+
+		// no texture references, set up a tev stage without texture
+		if (0 == i)
+		{
+			GX_SetTevOrder(i, 0, 0, 0);
+
+			GX_SetTevColorIn(i, 0xf, 0xf, 0xf, 10);
+			GX_SetTevColorOp(i, 0, 0, 0, 0, 0);
+
+			GX_SetTevAlphaIn(i, 0x7, 0x7, 0x7, 5);
+			GX_SetTevAlphaOp(i, 0, 0, 0, 0, 0);
+
+			++i;
+		}
 	}
+	
+	// enable correct number of tev stages
+	GX_SetNumTevStages(i);
 	}
 
-	// enable correct number of stages
-	//GX_SetNumTevStages(tev_stages.size());
-	GX_SetNumTevStages(std::max((size_t)1, tev_stages.size()));
+	// testing
 	//GX_SetNumTevStages(1);
 
-	// not good?
 	//glBlendColor((float)color[0] / 255, (float)color[1] / 255, (float)color[2] / 255, (float)color[3] / 255);
 }
 

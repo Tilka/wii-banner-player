@@ -110,7 +110,7 @@ public:
 
 	} tev_swap_mode_table[4];
 
-	struct TevStages
+	struct TevStage
 	{
 		u8 texcoord;
 
@@ -167,9 +167,13 @@ public:
 		u8 aIND : 2;
 		u8 empty4 : 2;
 
+		bool operator<(const TevStage& rhs) const
+		{
+			return memcmp(this, &rhs, sizeof(*this)) < 0;
+		}
 	};
 
-	std::vector<TevStages> tev_stages;
+	std::vector<TevStage> tev_stages;
 
 	u8 color[4];
 

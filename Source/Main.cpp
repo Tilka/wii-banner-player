@@ -34,6 +34,8 @@ distribution.
 
 #include "WrapGx.h"
 
+#include <gl/glew.h>
+
 #include "WiiBanner.h"
 
 #include <SFML/Window.hpp>
@@ -142,6 +144,11 @@ int main(int argc, char* argv[])
 
 	//glEnable(GL_TEXTURE_2D);
 	glShadeModel(GL_SMOOTH);	// whats this even do? :p
+
+	//GLint max_tev;
+	//glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_tev);
+	//std::cout << "max: " << max_tev << '\n';
+	//std::cin.get();
 
 	// test sfml-audio
 	//sf::Sound sound;

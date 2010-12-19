@@ -155,7 +155,7 @@ FrameNumber LoadAnimators(std::istream& file, F func)
 
 				animator.name = name;
 			
-				std::cout << "entry: " << name << '\n';
+				//std::cout << "entry: " << name << '\n';
 
 				ReadOffsetList(file, num_tags, origin, [&]()
 				{
@@ -181,8 +181,8 @@ FrameNumber LoadAnimators(std::istream& file, F func)
 					else if (magic == "RLTP")
 						tag = RLTP;
 
-					std::cout << "\ttag: ";
-					std::cout.write((char*)magic.data, 4) << '\n';
+					//std::cout << "\ttag: ";
+					//std::cout.write((char*)magic.data, 4) << '\n';
 
 					ReadOffsetList(file, entry_count, origin, [&]
 					{
@@ -196,7 +196,7 @@ FrameNumber LoadAnimators(std::istream& file, F func)
 						file >> BE >> type >> index >> data_type
 							>> frame_count >> pad1 >> offset;
 
-						std::cout << "\t\ttagentry: index: " << (int)index << " frame_count: " << frame_count << '\n';
+						//std::cout << "\t\ttagentry: index: " << (int)index << " frame_count: " << frame_count << '\n';
 
 						const FrameType frame_type(tag, type, index);
 
