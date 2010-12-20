@@ -172,6 +172,7 @@ int main(int argc, char* argv[])
 	//glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, max_anis);
 
 	bool banner_play = true;
+	banner.sound.Play();
 
 	while (window.IsOpened())
 	{
@@ -210,7 +211,13 @@ int main(int argc, char* argv[])
 					// pause resume playback
 				case sf::Key::Space:
 					banner_play ^= true;
+					if (banner_play)
+						banner.sound.Play();
+					else
+						banner.sound.Pause();
 					break;
+
+					// TODO make sound progress with frames
 
 					// previous frame
 				case sf::Key::Left:
@@ -224,7 +231,14 @@ int main(int argc, char* argv[])
 
 					// restart playback
 				case sf::Key::Back:
+					banner.sound.Stop();
 					banner.frame_current = 0;
+					break;
+
+					// exit app
+				case sf::Key::Escape:
+					banner.sound.Stop();
+					window.Close();
 					break;
 				}
 				break;

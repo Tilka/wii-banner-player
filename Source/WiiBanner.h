@@ -36,6 +36,7 @@ distribution.
 #include "Pane.h"
 #include "Picture.h"
 #include "Texture.h"
+#include "Sound.h"
 
 #include "Types.h"
 
@@ -53,6 +54,8 @@ public:
 	u32 GetHeight() const { return (u32)height; }
 
 	FrameNumber frame_current;
+
+	BannerStream sound;
 
 private:
 	float width, height;

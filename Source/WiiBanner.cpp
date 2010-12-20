@@ -26,6 +26,7 @@ distribution.
 #include "FileHandlerARC.h"
 
 #include "LZ77.h"
+#include "Sound.h"
 
 struct SectionHeader
 {
@@ -259,10 +260,17 @@ WiiBanner::WiiBanner(const std::string& path)
 	opening_arc_file.seekg(0x600);	// skip the header
 	DiscIO::CARCFile opening_arc(opening_arc_file);
 
+	// This is probably the wrong way to do it anyways. Should just
+	// read the filesystem and parse what's available. Also, things aren't
+	// necessarily in LZ77
 	const auto banner_offset = opening_arc.GetFileOffset("meta/banner.bin");
 	std::cout << "banner.bin offset is: " << banner_offset << '\n';
+	const auto icon_offset = opening_arc.GetFileOffset("meta/icon.bin");
+	std::cout << "icon.bin offset is: " << icon_offset << '\n';
+	const auto sound_offset = opening_arc.GetFileOffset("meta/sound.bin");
+	std::cout << "sound.bin offset is: " << sound_offset << '\n';
 
-	// there is some 32 byte header
+	// seek past IMD5 header
 	opening_arc_file.seekg(0x600 + banner_offset + 32, std::ios::beg);
 
 	// LZ77 decompress "banner.bin"
@@ -502,6 +510,11 @@ WiiBanner::WiiBanner(const std::string& path)
 
 	//	std::cout << '\n';
 	//}
+
+	// AUDIO!!
+	// seek past IMD5 header
+	opening_arc_file.seekg(0x600 + sound_offset + 32, std::ios::beg);
+	sound.Open(opening_arc_file);
 }
 
 void WiiBanner::SetFrame(FrameNumber frame_number)
