@@ -24,3 +24,4 @@ distribution.
 #include "Types.h"
 
 BEStreamManip BE;
+LEStreamManip LE;

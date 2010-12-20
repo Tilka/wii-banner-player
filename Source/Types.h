@@ -143,6 +143,37 @@ inline BEStream operator>>(std::istream& lhs, const BEStreamManip&)
 	return BEStream(lhs);
 }
 
+class LEStream
+{
+public:
+	LEStream(std::istream& stream)
+		: m_stream(stream)
+	{}
+
+	template <typename V>
+	LEStream& operator>>(V& rhs)
+	{
+		m_stream.read((char*)&rhs, sizeof(rhs));
+
+		return *this;
+	}
+
+private:
+	std::istream& m_stream;
+};
+
+struct LEStreamManip
+{
+	LEStreamManip() {}
+};
+
+extern LEStreamManip LE;
+
+inline LEStream operator>>(std::istream& lhs, const LEStreamManip&)
+{
+	return LEStream(lhs);
+}
+
 template <typename C, typename F>
 void ForEach(C& container, F func)
 {
@@ -162,6 +193,13 @@ void ReadBEArray(std::istream& file, T* data, unsigned int size)
 
 	for (unsigned int i = 0; i != size; ++i)
 		bestrm >> data[i];
+}
+
+template <typename T>
+void ReadLEArray(std::istream& file, T* data, unsigned int size)
+{
+	for (unsigned int i = 0; i != size; ++i)
+		file >> LE >> data[i];
 }
 
 #endif
