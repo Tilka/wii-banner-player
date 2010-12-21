@@ -189,21 +189,22 @@ BannerStream::BannerStream()
 {
 }
 
-bool BannerStream::Open(std::istream& in)
+bool BannerStream::Open(std::istream& file)
 {
 	BNS bns_file;
-	const std::streamoff in_start = in.tellg();
 	FourCC magic;
 	u32 file_len;
 
-	in >> magic;
+	file >> magic;
+
+	file.seekg(file.tellg() - std::streamoff(sizeof(magic)));
+	LZ77Decompressor decomp(file);
+	
+	std::istream& in = (magic == "LZ77") ? decomp.GetStream() : file;
+	const std::streamoff in_start = in.tellg();
 
 	if (magic == "LZ77")
-	{
-		std::cout << "sound.bin compressed\n";
-		LZ77Decompressor decomp(in);
-		// TODO
-	}
+		in >> magic;
 
 	if (magic == "RIFF")
 	{
