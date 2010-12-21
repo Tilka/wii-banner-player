@@ -30,6 +30,7 @@ struct BNS
 		u16 sample_rate;
 		u16 unk2;
 		u32 loop_start; // do we care?
+		u32 sample_count;
 		// TODO SO MANY unknowns
 		u32 right_start;
 		s16 coefs[2][16];
@@ -71,9 +72,9 @@ struct BNS
 		in.seekg(start + hdr.info_off, in.beg);
 		in >> info.magic >> BE >> info.size >> info.codec >> info.loop
 			>> info.num_channels >> info.unk >> info.sample_rate
-			>> info.unk2 >> info.loop_start;
+			>> info.unk2 >> info.loop_start >> info.sample_count;
 
-		in.seekg(7 * sizeof(u32), in.cur);
+		in.seekg(6 * sizeof(u32), in.cur);
 		
 		if (info.num_channels == 1)
 		{
@@ -104,35 +105,22 @@ struct BNS
 			|| (info.magic != "INFO")
 			|| (data.magic != "DATA"))
 			std::cout << "sound.bin appears invalid\n";
+
+		std::cout << GetSampleRate() << "Hz " << (int)GetChannelsCount() << "Channel(s) "
+			<< GetSamplesCount() << "Samples " << info.right_start << "right_start\n";
 	}
 
-	u32 DecodeToPCM(s16 *pcm)
-	{		
-		u32 pcm_pos;
-
-		dsp_regs.ClearHistory();
-		memcpy(dsp_regs.coefs, info.coefs[0], 16 * 2);
-		pcm_pos = DecodeChannelToPCM(pcm, 0, 0,
-			(info.num_channels == 2) ? info.right_start : data.size);
-
-		if (info.num_channels == 2)
-		{
-			dsp_regs.ClearHistory();
-			memcpy(dsp_regs.coefs, info.coefs[1], 16 * 2);
-			DecodeChannelToPCM(pcm, 1, info.right_start,
-				data.size - info.right_start);
-		}
-
-		return pcm_pos;
-	}
+	u8  GetChannelsCount() { return info.num_channels; }
+	u32 GetSamplesCount()  { return info.sample_count * GetChannelsCount(); }
+	u32 GetSampleRate()    { return info.sample_rate; }
 
 	u32 DecodeChannelToPCM(s16 *pcm, u32 pcm_start_pos,
-		u32 adpcm_start_pos, u32 adpcm_size)
+		u32 adpcm_start_pos, u32 adpcm_end_pos)
 	{
-		u32 adpcm_pos = adpcm_start_pos;
 		u32 pcm_pos = pcm_start_pos;
+		u32 adpcm_pos = adpcm_start_pos;
 
-		while (adpcm_pos < adpcm_size * 2)
+		while (adpcm_pos < adpcm_end_pos * 2)
 		{
 			if ((adpcm_pos & 15) == 0)
 			{
@@ -175,7 +163,23 @@ struct BNS
 					pcm_pos++;
 			}
 		}
+
 		return pcm_pos;
+	}
+
+	void DecodeToPCM(s16 *pcm)
+	{
+		dsp_regs.ClearHistory();
+		memcpy(dsp_regs.coefs, info.coefs[0], 16 * 2);
+		DecodeChannelToPCM(pcm, 0, 0,
+			(info.num_channels == 2) ? info.right_start : data.size);
+
+		if (info.num_channels == 2)
+		{
+			dsp_regs.ClearHistory();
+			memcpy(dsp_regs.coefs, info.coefs[1], 16 * 2);
+			DecodeChannelToPCM(pcm, 1, info.right_start * 2, data.size);
+		}
 	}
 };
 
@@ -236,9 +240,9 @@ bool BannerStream::Open(std::istream& in)
 	else
 	{
 		s16 *pcm = new s16[bns_file.data.size * 2];
-		u32 pcm_samples = bns_file.DecodeToPCM(pcm);
-		ret = SoundData.LoadFromSamples(pcm, pcm_samples,
-			bns_file.info.num_channels, bns_file.info.sample_rate);
+		bns_file.DecodeToPCM(pcm);
+		ret = SoundData.LoadFromSamples(pcm, bns_file.GetSamplesCount(),
+			bns_file.GetChannelsCount(), bns_file.GetSampleRate());
 		delete [] pcm;
 	}
 
