@@ -39,22 +39,18 @@ class Material : public Animator
 public:
 	Material(std::istream& file, const std::vector<Texture*>& textures);
 
-	void Bind() const;
+	void Apply() const;
 
-	void ProcessRLTS(u8 type, u8 index, float value);
-	void ProcessRLMC(u8 index, u8 value);
-
+	// TODO: remove this guy
 	void AdjustTexCoords(TexCoord tc[]) const;
-	
+
+	// TODO: remove these guys
 	const s16* GetColorFore() const { return color_fore; }
 	const s16* GetColorBack() const { return color_back; }
 
-	~Material()
-	{
-		//glDeleteTextures(1, &gltex);
-	}
-
-//protected:
+private:
+	bool ProcessRLTS(u8 type, u8 index, float value);
+	bool ProcessRLMC(u8 index, u8 value);
 
 	struct TextureRef
 	{

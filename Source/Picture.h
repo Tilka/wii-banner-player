@@ -43,7 +43,8 @@ protected:
 
 private:
 	void Draw() const;
-	void ProcessRLVC(u8 index, u8 value);
+
+	bool ProcessRLVC(u8 index, u8 value);
 };
 
 #endif

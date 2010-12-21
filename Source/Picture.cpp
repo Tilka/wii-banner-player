@@ -23,9 +23,10 @@ distribution.
 
 #include "Picture.h"
 
+// multiply 2 colors
 // assumes u8s, takes any type to avoid multiple conversions
 template <typename C1, typename C2>
-inline u8 MultiplyColors(C1 c1, C2 c2)
+inline u8 Modulate(C1 c1, C2 c2)
 {
 	return (u16)c1 * c2 / 0xff;
 }
@@ -55,7 +56,7 @@ Picture::Picture(std::istream& file, const std::vector<Material*>& materials)
 
 void Picture::Draw() const
 {
-	material->Bind();
+	material->Apply();
 
 	TexCoord tc[4];
 	for (int i = 0; i != 4; ++i)
@@ -77,10 +78,10 @@ void Picture::Draw() const
 	
 	for (int vert = 0; vert != 4; ++vert)
 	{
-		vc[vert][3] = MultiplyColors(vc[vert][3], alpha);
+		vc[vert][3] = Modulate(vc[vert][3], alpha);
 		
 		for (int c = 0; c != 4; ++c)
-			vc[vert][c] = MultiplyColors(vc[vert][c], mat_back[c]);
+			vc[vert][c] = Modulate(vc[vert][c], mat_back[c]);
 	}
 
 	// origin
@@ -109,10 +110,14 @@ void Picture::Draw() const
 	GX_End();
 }
 
-void Picture::ProcessRLVC(u8 index, u8 value)
+bool Picture::ProcessRLVC(u8 index, u8 value)
 {
 	if (index < 16)
 		((u8*)vertex_colors)[index] = value;
 	else if (16 == index)
 		alpha = value;
+	else
+		return false;
+
+	return true;
 }

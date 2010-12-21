@@ -27,10 +27,6 @@ distribution.
 
 //#include <gl/glew.h>
 
-// TODO: put SAFE_ARRAY_VALUE stuff elsewhere
-#define ARRAY_LENGTH(a) (sizeof(a)/sizeof(*a))
-#define SAFE_ARRAY_VALUE(a, x) (((x) < ARRAY_LENGTH(a)) ? (a[x]) : (a[0]))
-
 Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 {
 	{
@@ -71,7 +67,7 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 
 	file >> BE >> flags.value;
 
-	std::cout << "flags: " << flags.value << '\n';
+	//std::cout << "flags: " << flags.value << '\n';
 
 	// TextureRef
 	for (u32 i = 0; i != flags.texture_ref; ++i)
@@ -111,7 +107,10 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 		// TODO: make sure not out of range
 		TextureRef& ref = texture_refs[i];
 
+		//u8 tgen_type, tgen_src, mtrx_src;
+
 		file >> BE >> ref.tgen_type >> ref.tgen_src >> ref.mtrx_src;
+		//file >> BE >> tgen_type >> tgen_src >> mtrx_src;
 		file.seekg(1, std::ios::cur);
 	}
 
@@ -197,7 +196,7 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 
 		file.read((char*)&tev_stages.back(), sizeof(TevStage));
 
-		std::cout << "TevStage\n";
+		//std::cout << "TevStage\n";
 	}
 
 	// TODO:
@@ -241,7 +240,7 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	}
 }
 
-void Material::Bind() const
+void Material::Apply() const
 {
 	// bind textures
 	{
@@ -345,7 +344,7 @@ void Material::Bind() const
 	//glBlendColor((float)color[0] / 255, (float)color[1] / 255, (float)color[2] / 255, (float)color[3] / 255);
 }
 
-void Material::ProcessRLTS(u8 type, u8 index, float value)
+bool Material::ProcessRLTS(u8 type, u8 index, float value)
 {
 	if (index < 5 && type < texture_refs.size())
 	{
@@ -364,9 +363,13 @@ void Material::ProcessRLTS(u8 type, u8 index, float value)
 
 		*values[index] = value;
 	}
+	else
+		return false;
+
+	return true;
 }
 
-void Material::ProcessRLMC(u8 index, u8 value)
+bool Material::ProcessRLMC(u8 index, u8 value)
 {
 	if (index < 4)
 		color[index] = value;
@@ -376,6 +379,10 @@ void Material::ProcessRLMC(u8 index, u8 value)
 		color_back[index - 8] = value;
 	else if (index < 16)
 		color_tevreg3[index - 12] = value;
+	else
+		return false;
+
+	return true;
 }
 
 void Material::AdjustTexCoords(TexCoord tc[]) const

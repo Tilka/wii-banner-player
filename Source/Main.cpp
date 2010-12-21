@@ -231,8 +231,10 @@ int main(int argc, char* argv[])
 
 					// restart playback
 				case sf::Key::Back:
-					banner.sound.Stop();
 					banner.frame_current = 0;
+					banner.sound.Stop();
+					if (banner_play)
+						banner.sound.Play();
 					break;
 
 					// exit app

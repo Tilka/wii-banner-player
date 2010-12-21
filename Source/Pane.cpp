@@ -57,36 +57,45 @@ Pane::~Pane()
 	});
 }
 
-void Pane::ProcessRLPA(u8 index, float value)
+bool Pane::ProcessRLPA(u8 index, float value)
 {
-	float* const values[] =
-	{
-		&translate.x,
-		&translate.y,
-		&translate.z,
-
-		&rotate.x,
-		&rotate.y,
-		&rotate.z,
-
-		&scale.x,
-		&scale.y,
-
-		&width,
-		&height,
-	};
-
 	if (index < 10)
+	{
+		float* const values[] =
+		{
+			&translate.x,
+			&translate.y,
+			&translate.z,
+
+			&rotate.x,
+			&rotate.y,
+			&rotate.z,
+
+			&scale.x,
+			&scale.y,
+
+			&width,
+			&height,
+		};
+
 		*values[index] = value;
+	}
+	else
+		return false;
+
+	return true;
 }
 
-void Pane::ProcessRLVI(u8 value)
+bool Pane::ProcessRLVI(u8 value)
 {
 	visible = value;
+
+	return true;
 }
 
 void Pane::SetFrame(FrameNumber frame)
 {
+	// setframe on self
 	Animator::SetFrame(frame);
 
 	// setframe on children

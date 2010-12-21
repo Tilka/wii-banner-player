@@ -23,22 +23,6 @@ distribution.
 
 #include "Animator.h"
 
-//template <typename T>
-//inline T BlendValues(T p1, T p2, float intrpl)
-//{
-//	// will also work with u8 types this way
-//	if (p2 > p1)
-//	{
-//		const T diff = p2 - p1;
-//		return p1 + T(diff * intrpl);
-//	}
-//	else
-//	{
-//		const T diff = p1 - p2;
-//		return p1 - T(diff * intrpl);
-//	}
-//}
-
 void Animator::SetFrame(FrameNumber frame_number)
 {
 	ForEach(key_frames, [=](const std::pair<const FrameType&, const KeyFrameHandler&> frame_handler)
@@ -47,44 +31,61 @@ void Animator::SetFrame(FrameNumber frame_number)
 
 		const auto& frame_type = frame_handler.first;
 
-		switch (frame_handler.first.tag)
+		bool result = false;
+
+		switch (frame_type.tag)
 		{
 		case RLPA:
-			ProcessRLPA(frame_type.index, frame_value);
+			result = ProcessRLPA(frame_type.index, frame_value);
 			break;
 
 		case RLTS:
-			ProcessRLTS(frame_type.type, frame_type.index, frame_value);
+			result = ProcessRLTS(frame_type.type, frame_type.index, frame_value);
 			break;
 
 		case RLVC:
-			ProcessRLVC(frame_type.index, (u8)frame_value);
+			result = ProcessRLVC(frame_type.index, (u8)frame_value);
 			break;
 
 		case RLMC:
-			ProcessRLMC(frame_type.index, (u8)frame_value);
+			result = ProcessRLMC(frame_type.index, (u8)frame_value);
 			break;
 		}
+
+		//if (!result)
+		//	std::cout << "unhandled frame (" << name << "): tag: " << (int)frame_type.tag
+		//	<< " type: " << (int)frame_type.type
+		//	<< " index: " << (int)frame_type.index
+		//	<< '\n';
 	});
 
 	ForEach(static_frames, [=](const std::pair<const FrameType&, const StaticFrameHandler&> frame_handler)
 	{
 		auto const frame_data = frame_handler.second.GetFrame(frame_number);
 
-		switch (frame_handler.first.tag)
+		const auto& frame_type = frame_handler.first;
+
+		bool result = false;
+
+		switch (frame_type.tag)
 		{
 		case RLVI:
-			ProcessRLVI(frame_data.second);
+			result = ProcessRLVI(frame_data.data2);
 			break;
 
 		case RLTP:
-			//ProcessRLTP(frame_data.second);
+			//result = ProcessRLTP(frame_data.data2);
 			break;
 
 		case RLIM:
-			//ProcessRLIM(frame_data.second);
+			//result = ProcessRLIM(frame_data.data2);
 			break;
 		}
+
+		//if (!result)
+		//	std::cout << "unhandled frame (" << name << "): tag: " << (int)frame_type.tag
+		//	<< " index: " << (int)frame_type.index
+		//	<< '\n';
 	});
 }
 
@@ -96,7 +97,7 @@ void StaticFrameHandler::Load(std::istream& file, u16 count)
 		file >> BE >> frame;
 
 		auto& pair = frames[frame];
-		file >> BE >> pair.first >> pair.second;
+		file >> BE >> pair.data1 >> pair.data2;
 		file.seekg(2, std::ios::cur);	// these bytes important? :p
 
 		//std::cout << "\t\t\t" "frame: " << frame << ' ' << pair.first << " " << pair.second << '\n';
@@ -107,20 +108,25 @@ void KeyFrameHandler::Load(std::istream& file, u16 count)
 {
 	while (count--)
 	{
-		FrameNumber frame;
-		file >> BE >> frame;
+		std::pair<FrameNumber, FrameData> pair;
 
-		file >> BE >> frames[frame];
-		file.seekg(4, std::ios::cur);	// skipping the "blend" value, dunno how to use it :/
+		// read the frame number
+		file >> BE >> pair.first;
+
+		// read the value and slope
+		file >> BE >> pair.second.value >> pair.second.slope;
+
+		frames.insert(pair);
 
 		//std::cout << "\t\t\t" "frame: " << frame << ' ' << frames[frame] << '\n';
 	}
 }
 
-StaticFrameHandler::Frame StaticFrameHandler::GetFrame(FrameNumber frame_number) const
+StaticFrameHandler::FrameData StaticFrameHandler::GetFrame(FrameNumber frame_number) const
 {
 	// assuming not empty, a safe assumption currently
 
+	// find the current frame, or the one after it
 	auto frame_it = frames.lower_bound(frame_number);
 
 	// current frame is higher than any keyframe, use the last keyframe
@@ -134,7 +140,7 @@ StaticFrameHandler::Frame StaticFrameHandler::GetFrame(FrameNumber frame_number)
 	return frame_it->second;
 }
 
-KeyFrameHandler::Frame KeyFrameHandler::GetFrame(FrameNumber frame_number) const
+float KeyFrameHandler::GetFrame(FrameNumber frame_number) const
 {
 	// assuming not empty, a safe assumption currently
 
@@ -151,26 +157,37 @@ KeyFrameHandler::Frame KeyFrameHandler::GetFrame(FrameNumber frame_number) const
 	if (frame_number < prev->first && frames.begin() != prev)
 		--prev;
 
-	if (next->first == prev->first)
+	const float nf = next->first - prev->first;
+	if (0 == nf)
 	{
-		// same 2 frames, return the first one
-		return prev->second;
+		// same frame numbers, just return the first's value
+		return prev->second.value;
 	}
 	else
 	{
 		// different frames, blend them together
+		// this is a "Cubic Hermite spline" apparently
 
-		// clamp
+		// clamp frame_number
 		frame_number = std::max(prev->first, std::min(next->first, frame_number));
-		const float intrpl = (frame_number - prev->first) / (next->first - prev->first);
+		
+		const float t = (frame_number - prev->first) / nf;
 
-		return prev->second + (next->second - prev->second) * intrpl;
+		// old curve-less code
+		//return prev->second.value + (next->second.value - prev->second.value) * t;
+ 
+		// curvy code from marcan, :p
+		return
+			prev->second.slope * nf * (t + powf(t, 3) - 2 * powf(t, 2)) +
+			next->second.slope * nf * (powf(t, 3) - powf(t, 2)) +
+			prev->second.value * (1 + (2 * powf(t, 3) - 3 * powf(t, 2))) +
+			next->second.value * (-2 * powf(t, 3) + 3 * powf(t, 2));
 	}
 }
 
 void StaticFrameHandler::CopyFrames(const StaticFrameHandler& fh, FrameNumber frame_offset)
 {
-	ForEach(fh.frames, [=](const std::pair<const FrameNumber, const Frame&> frame)
+	ForEach(fh.frames, [=](const std::pair<const FrameNumber, const FrameData&> frame)
 	{
 		frames[frame.first + frame_offset] = frame.second;
 	});
@@ -178,9 +195,9 @@ void StaticFrameHandler::CopyFrames(const StaticFrameHandler& fh, FrameNumber fr
 
 void KeyFrameHandler::CopyFrames(const KeyFrameHandler& fh, FrameNumber frame_offset)
 {
-	ForEach(fh.frames, [=](const std::pair<const FrameNumber, const Frame&> frame)
+	ForEach(fh.frames, [=](const std::pair<const FrameNumber, const FrameData&> frame)
 	{
-		frames[frame.first + frame_offset] = frame.second;
+		frames.insert(std::make_pair(frame.first + frame_offset, frame.second));
 	});
 }
 

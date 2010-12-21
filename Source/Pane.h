@@ -74,8 +74,8 @@ public:
 private:
 	virtual void Draw() const {};
 
-	void ProcessRLPA(u8 index, float value);
-	void ProcessRLVI(u8 value);
+	bool ProcessRLPA(u8 index, float value);
+	bool ProcessRLVI(u8 value);
 };
 
 #endif

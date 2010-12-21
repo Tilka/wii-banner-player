@@ -38,7 +38,7 @@ Texture::Texture(std::istream& file)
 
 	file >> magic >> BE >> count >> header_size;
 
-	std::cout << "Texture::Texture() count = " << count << '\n';
+	//std::cout << "Texture::Texture() count = " << count << '\n';
 
 	// seek to end of header
 	file.seekg(header_size - 0xC, std::ios::cur);

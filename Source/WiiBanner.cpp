@@ -181,6 +181,14 @@ FrameNumber LoadAnimators(std::istream& file, F func)
 						tag = RLMC;
 					else if (magic == "RLTP")
 						tag = RLTP;
+					else if (magic == "RLIM")
+						tag = RLIM;
+					else
+					{
+						std::cout << "unknown frame tag: ";
+						std::cout.write((char*)magic.data, 4) << '\n';
+						//std::cin.get();
+					}
 
 					//std::cout << "\ttag: ";
 					//std::cout.write((char*)magic.data, 4) << '\n';
@@ -532,6 +540,7 @@ void WiiBanner::SetFrame(FrameNumber frame_number)
 
 void WiiBanner::Render()
 {
+	// hax
 	Mtx mt;
 	guMtxIdentity(mt);
 

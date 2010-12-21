@@ -55,7 +55,7 @@ struct FrameType
 	}
 
 	const FRAME_TAG tag;
-	// TODO: remove these when i figure out all their purposes
+	// TODO: rename these when i figure out all their purposes
 	const u8 type, index;
 };
 
@@ -66,16 +66,19 @@ class StaticFrameHandler
 public:
 	void Load(std::istream& file, u16 count);
 
-	// TODO: std::pair is silly, make a struct
-	typedef std::pair<u8, u8> Frame;
+	struct FrameData
+	{
+		// TODO: can these be named better?
+		u8 data1, data2;
+	};
 
-	Frame GetFrame(FrameNumber frame_number) const;
+	FrameData GetFrame(FrameNumber frame_number) const;
 	void CopyFrames(const StaticFrameHandler& kf, FrameNumber frame_offset);
 
 private:
 	void Process(FrameNumber frame, Animator& animator) const;
 
-	std::map<FrameNumber, Frame> frames;
+	std::map<FrameNumber, FrameData> frames;
 };
 
 class KeyFrameHandler
@@ -83,16 +86,18 @@ class KeyFrameHandler
 public:
 	void Load(std::istream& file, u16 count);
 
-	typedef float Frame;
+	struct FrameData
+	{
+		float value, slope;
+	};
 
-	Frame GetFrame(FrameNumber frame_number) const;
+	float GetFrame(FrameNumber frame_number) const;
 	void CopyFrames(const KeyFrameHandler& kf, FrameNumber frame_offset);
 
 private:
 	void Process(FrameNumber frame, Animator& animator) const;
 
-	// TODO: handle the "blend" float
-	std::map<FrameNumber, Frame> frames;
+	std::multimap<FrameNumber, FrameData> frames;
 };
 
 class Animator
@@ -102,19 +107,22 @@ public:
 
 	void CopyFrames(Animator& rhs, FrameNumber frame_offset);
 
-//private:
-	virtual void ProcessRLPA(u8 index, float value) {}	// Pane Animation
-	virtual void ProcessRLTS(u8 type, u8 index, float value) {}	// Texture Scale/Rotate/Translate
-	virtual void ProcessRLVI(u8 value) {}	// Visibility
-	virtual void ProcessRLVC(u8 index, u8 value) {}	// Vertex Color
-	virtual void ProcessRLMC(u8 index, u8 value) {}	// Material Color
-	virtual void ProcessRLTP() {}	// Texture Pallete
-	virtual void ProcessRLIM() {}	// 
+//protected:
+	std::string name;
 
 	std::map<FrameType, StaticFrameHandler> static_frames;
 	std::map<FrameType, KeyFrameHandler> key_frames;
 
-	std::string name;
+private:
+	// TODO: can these be named better? :p
+
+	virtual bool ProcessRLPA(u8 index, float value) { return false; }	// Pane Animation
+	virtual bool ProcessRLTS(u8 type, u8 index, float value) { return false; }	// Texture Scale/Rotate/Translate
+	virtual bool ProcessRLVI(u8 value) { return false; }	// Visibility
+	virtual bool ProcessRLVC(u8 index, u8 value) { return false; }	// Vertex Color
+	virtual bool ProcessRLMC(u8 index, u8 value) { return false; }	// Material Color
+	virtual bool ProcessRLTP() { return false; }	// Texture Pallete
+	virtual bool ProcessRLIM() { return false; }	// 
 };
 
 #endif
