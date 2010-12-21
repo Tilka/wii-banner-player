@@ -97,6 +97,8 @@ struct BNS
 
 		in.seekg(start + hdr.data_off, in.beg);
 		in >> data.magic >> BE >> data.size;
+		// chop off the magic + size words
+		hdr.data_len = data.size -= 8;
 		adpcm = new u8[data.size];
 		ReadBEArray(in, adpcm, data.size);
 
@@ -105,9 +107,6 @@ struct BNS
 			|| (info.magic != "INFO")
 			|| (data.magic != "DATA"))
 			std::cout << "sound.bin appears invalid\n";
-
-		std::cout << GetSampleRate() << "Hz " << (int)GetChannelsCount() << "Channel(s) "
-			<< GetSamplesCount() << "Samples " << info.right_start << "right_start\n";
 	}
 
 	u8  GetChannelsCount() { return info.num_channels; }
@@ -267,19 +266,29 @@ bool BannerStream::OnStart()
 bool BannerStream::OnGetData(sf::SoundStream::Chunk& Data)
 {
 	// Check if there is enough data to stream
-	if (myOffset + myBufferSize >= myBuffer.size())
+	if (myOffset >= myBuffer.size())
 	{
 		// Returning false means that we want to stop playing the stream
 		return false;
 	}
+	
+	if (myOffset + myBufferSize >= myBuffer.size())
+	{
+		// Play the last buffer
+		Data.Samples   = &myBuffer[myOffset];
+		Data.NbSamples = myBuffer.size() - myOffset;
+		myOffset += Data.NbSamples;
+	}
+	else
+	{
+		// Fill the stream chunk with a pointer to the audio data and the number
+		// of samples to stream
+		Data.Samples   = &myBuffer[myOffset];
+		Data.NbSamples = myBufferSize;
 
-	// Fill the stream chunk with a pointer to the audio data and the number
-	// of samples to stream
-	Data.Samples   = &myBuffer[myOffset];
-	Data.NbSamples = myBufferSize;
-
-	// Update the read offset
-	myOffset += myBufferSize;
+		// Update the read offset
+		myOffset += myBufferSize;
+	}
 
 	return true;
 }
