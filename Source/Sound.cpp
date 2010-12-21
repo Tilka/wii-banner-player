@@ -211,7 +211,6 @@ bool BannerStream::Open(std::istream& in)
 	{
 		format = FORMAT_AIFF;
 		in >> BE >> file_len;
-		file_len /= 32;
 	}
 	else if (magic == "BNS ")
 	{
