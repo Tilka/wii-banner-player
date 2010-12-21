@@ -92,7 +92,7 @@ struct BNS
 		}
 		else
 		{
-			std::cout << info.num_channels << " channels unsupported!\n";
+			std::cout << (int)info.num_channels << " channels unsupported!\n";
 		}
 
 		in.seekg(start + hdr.data_off, in.beg);
@@ -194,6 +194,7 @@ bool BannerStream::Open(std::istream& file)
 	BNS bns_file;
 	FourCC magic;
 	u32 file_len;
+	std::streamoff in_start = file.tellg();
 
 	file >> magic;
 
@@ -201,10 +202,12 @@ bool BannerStream::Open(std::istream& file)
 	LZ77Decompressor decomp(file);
 	
 	std::istream& in = (magic == "LZ77") ? decomp.GetStream() : file;
-	const std::streamoff in_start = in.tellg();
-
+	
 	if (magic == "LZ77")
+	{
+		in_start = in.tellg();
 		in >> magic;
+	}
 
 	if (magic == "RIFF")
 	{
