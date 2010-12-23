@@ -23,9 +23,7 @@ distribution.
 
 #include "Material.h"
 
-#include "WrapGx.h"
-
-//#include <gl/glew.h>
+#include <gl/glew.h>
 
 Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 {
@@ -38,10 +36,8 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	std::cout << "\tmaterial: " << name << '\n';
 
 	// read colors
-	ReadBEArray(file, color_fore, 4);
-	ReadBEArray(file, color_back, 4);
-	ReadBEArray(file, color_tevreg3, 4);
-	ReadBEArray(file, (u8*)color_tevk, sizeof(color_tevk));
+	ReadBEArray(file, &color_regs->r, 4 * 3);
+	ReadBEArray(file, color_tevk[0], sizeof(color_tevk));
 
 	union
 	{
@@ -87,32 +83,42 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	// TextureSRT
 	for (u32 i = 0; i != flags.texture_srt; ++i)
 	{
-		// TODO: make sure not out of range
-		TextureRef& ref = texture_refs[i];
+		texture_srts.push_back(TextureSrt());
+		auto& srt = texture_srts.back();
 
-		file >> BE >> ref.translate.x >> ref.translate.y >> ref.rotate >> ref.scale.x >> ref.scale.y;
+		file >> BE >> srt.translate.x >> srt.translate.y >> srt.rotate >> srt.scale.x >> srt.scale.y;
 
 		//std::cout << "XTrans: " << translate.x << " YTrans: " << translate.y << " Rotate: " << rotate
 			//<< " XScale: " << scale.x << " YScale: " << scale.y << '\n';
 	}
-	//if (flags.texture_srt > 1)
+	//if (!flags.texture_srt)
 	//{
-	//	std::cout << flags.texture_srt << "texture refs\n";
-	//	std::cin.get();
+	//	// set up defaults, this seems dumb/wrong
+	//	texture_srts.push_back(TextureSrt());
+	//	auto& srt = texture_srts.back();
+
+	//	srt.rotate = 0.f;
+	//	srt.scale.x = srt.scale.y = srt.translate.x = srt.translate.y = 1.f;
 	//}
 
 	// CoordGen
 	for (u32 i = 0; i != flags.texture_coord; ++i)
 	{
-		// TODO: make sure not out of range
-		TextureRef& ref = texture_refs[i];
+		texture_coord_gens.push_back(TextureCoordGen());
+		auto& coord = texture_coord_gens.back();
 
-		//u8 tgen_type, tgen_src, mtrx_src;
-
-		file >> BE >> ref.tgen_type >> ref.tgen_src >> ref.mtrx_src;
+		file >> BE >> coord.tgen_type >> coord.tgen_src >> coord.mtrx_src;
 		//file >> BE >> tgen_type >> tgen_src >> mtrx_src;
 		file.seekg(1, std::ios::cur);
 	}
+	//if (!flags.texture_coord)
+	//{
+	//	// set up defaults, this seems dumb/wrong
+	//	texture_coord_gens.push_back(TextureCoordGen());
+	//	auto& coord = texture_coord_gens.back();
+
+	//	coord.mtrx_src = 30;
+	//}
 
 	// ChanControl
 	if (flags.channel_control)
@@ -198,6 +204,46 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 
 		//std::cout << "TevStage\n";
 	}
+	if (!flags.tev_stage)
+	{
+		// set up defaults, this seems dumb/wrong
+
+		{
+		tev_stages.push_back(TevStage());
+		auto& tev = tev_stages.back();
+
+		tev.aC = 2;
+		tev.bC = 4;
+		tev.cC = 8;
+		tev.dC = 0xf;
+
+		tev.aA = 1;
+		tev.bA = 2;
+		tev.cA = 4;
+		tev.dA = 0x7;
+
+		tev.texmap = 0;
+		tev.mtxid = 0;
+		}
+
+		{
+		tev_stages.push_back(TevStage());
+		auto& tev = tev_stages.back();
+
+		tev.aC = 0xf;
+		tev.bC = 0;
+		tev.cC = 10;
+		tev.dC = 0xf;
+
+		tev.aA = 0x7;
+		tev.bA = 0;
+		tev.cA = 5;
+		tev.dA = 0x7;
+
+		tev.texmap = 0;
+		tev.mtxid = 0;
+		}
+	}
 
 	// TODO:
 	// AlphaCompare
@@ -242,31 +288,6 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 
 void Material::Apply() const
 {
-	// bind textures
-	{
-	//glMatrixMode(GL_TEXTURE);
-
-	unsigned int i = 0;
-	ForEach(texture_refs, [&](const TextureRef& tr)
-	{
-		if (tr.texture)
-		{
-			GX_LoadTexObj(&tr.texture->texobj, i);
-			GX_InitTexObjWrapMode(&tr.texture->texobj, tr.wrap_s, tr.wrap_t);
-
-			//// temporary
-			//glLoadIdentity();
-			//glTranslatef(tr.translate.x, tr.translate.y, 0.f);
-			//glRotatef(tr.rotate, 0.f, 0.f, 1.f);
-			//glScalef(tr.scale.x, tr.scale.y, 0.f);
-		}
-
-		++i;
-	});
-
-	//glMatrixMode(GL_MODELVIEW);
-	}
-
 	// alpha compare
 	GX_SetAlphaCompare(alpha_compare.function & 0xf, alpha_compare.ref0,
 		alpha_compare.aop, alpha_compare.function >> 4, alpha_compare.ref1);
@@ -274,16 +295,71 @@ void Material::Apply() const
 	// blend mode
 	GX_SetBlendMode(blend_mode.type, blend_mode.src_factor, blend_mode.dst_factor, blend_mode.logical_op);
 
+	// tev reg colors
+	for (unsigned int i = 0; i != 3; ++i)
+		GX_SetTevColorS10(GX_TEVREG0 + i, color_regs[i]);
+
+	// bind textures
+	{
+	unsigned int i = 0;
+	ForEach(texture_refs, [&](const TextureRef& tr)
+	{
+		if (tr.texture)
+		{
+			GX_LoadTexObj(&tr.texture->texobj, i);
+			GX_InitTexObjWrapMode(&tr.texture->texobj, tr.wrap_s, tr.wrap_t);
+		}
+
+		++i;
+	});
+	}
+
+	// texture coord gen
+	glMatrixMode(GL_TEXTURE);
+	{
+	unsigned int i = 0;
+	ForEach(texture_coord_gens, [&](const TextureCoordGen& tcg)
+	{
+		glActiveTexture(GL_TEXTURE0 + i);
+		glLoadIdentity();
+
+		// TODO: not using "tgen_type", "tgen_src"
+
+		const u8 mtrx = (tcg.mtrx_src - 30) / 3;
+
+		if (mtrx < texture_srts.size())
+		{
+			const auto& srt = texture_srts[mtrx];
+
+			// why must i do this 0.5 hackery?
+			glTranslatef(0.5f, 0.5f, 0.f);
+			glRotatef(srt.rotate, 0.f, 0.f, 1.f);
+			//glTranslatef(-0.5f, -0.5f, 0.f);
+
+			glTranslatef(-srt.translate.x, -srt.translate.y, 0.f);
+
+			//glTranslatef(0.5f, 0.5f, 0.f);
+			glScalef(srt.scale.x, srt.scale.y, 1.f);
+			glTranslatef(-0.5f * std::abs(srt.scale.x), -0.5f * std::abs(srt.scale.y), 0.f);
+		}
+
+		++i;
+	});
+	for (; i != 8; ++i)
+	{
+		glActiveTexture(GL_TEXTURE0 + i);
+		glLoadIdentity();
+	}
+	}
+	glMatrixMode(GL_MODELVIEW);
+
 	// tev stages
 	{
 	int i = 0;
 	ForEach(tev_stages, [&](const TevStage& ts)
 	{
-		GX_SetTevOrder(i, ts.texcoord, ((u32)ts.texmaptop << 8) | ts.texmapbot, ts.color);
+		GX_SetTevOrder(i, ts.texcoord, ts.texmap, ts.color);
 		GX_SetTevSwapMode(i, ts.ras_sel, ts.tex_sel);
-
-		GX_SetTevIndirect(i, ts.indtexid, ts.format, ts.bias, ts.mtxid, 
-			ts.wrap_s, ts.wrap_t, ts.addprev, ts.utclod, ts.aIND);
 
 		GX_SetTevColorIn(i, ts.aC, ts.bC, ts.cC, ts.dC);
 		GX_SetTevColorOp(i, ts.tevopC, ts.tevbiasC, ts.tevscaleC, ts.clampC, ts.tevregidC);
@@ -293,46 +369,11 @@ void Material::Apply() const
 		GX_SetTevAlphaOp(i, ts.tevopA, ts.tevbiasA, ts.tevscaleA, ts.clampA, ts.tevregidA);
 		GX_SetTevKAlphaSel(i, ts.selA);
 
+		GX_SetTevIndirect(i, ts.indtexid, ts.format, ts.bias, ts.mtxid, 
+			ts.wrap_s, ts.wrap_t, ts.addprev, ts.utclod, ts.aIND);
+
 		++i;
 	});
-
-	// no tev stages defined, set up defaults
-	if (0 == i)
-	{
-		// one stage each texture reference, i guess?
-		ForEach(texture_refs, [&](const TextureRef& tr)
-		{
-			GX_SetTevOrder(i, 0, i, 0);
-			//GX_SetTevSwapMode(0, ts.ras_sel, ts.tex_sel);
-
-			//GX_SetTevIndirect(0, ts.indtexid, ts.format, ts.bias, ts.mtxid, 
-				//ts.wrap_s, ts.wrap_t, ts.addprev, ts.utclod, ts.aIND);
-
-			GX_SetTevColorIn(i, 0xf, 8, 10, 0xf);
-			GX_SetTevColorOp(i, 0, 0, 0, 0, 0);
-			//GX_SetTevKColorSel(0, ts.selC);
-
-			GX_SetTevAlphaIn(i, 0x7, 4, 5, 0x7);
-			GX_SetTevAlphaOp(i, 0, 0, 0, 0, 0);
-			//GX_SetTevKAlphaSel(0, ts.selA);
-
-			++i;
-		});
-
-		// no texture references, set up a tev stage without texture
-		if (0 == i)
-		{
-			GX_SetTevOrder(i, 0, 0, 0);
-
-			GX_SetTevColorIn(i, 0xf, 0xf, 0xf, 10);
-			GX_SetTevColorOp(i, 0, 0, 0, 0, 0);
-
-			GX_SetTevAlphaIn(i, 0x7, 0x7, 0x7, 5);
-			GX_SetTevAlphaOp(i, 0, 0, 0, 0, 0);
-
-			++i;
-		}
-	}
 	
 	// enable correct number of tev stages
 	GX_SetNumTevStages(i);
@@ -346,19 +387,19 @@ void Material::Apply() const
 
 bool Material::ProcessRLTS(u8 type, u8 index, float value)
 {
-	if (index < 5 && type < texture_refs.size())
+	if (index < 5 && type < texture_srts.size())
 	{
-		TextureRef& ref = texture_refs[type];
+		auto& srt = texture_srts[type];
 
 		float* const values[] =
 		{
-			&ref.translate.x,
-			&ref.translate.y,
+			&srt.translate.x,
+			&srt.translate.y,
 
-			&ref.rotate,
+			&srt.rotate,
 
-			&ref.scale.x,
-			&ref.scale.y,
+			&srt.scale.x,
+			&srt.scale.y,
 		};
 
 		*values[index] = value;
@@ -373,52 +414,10 @@ bool Material::ProcessRLMC(u8 index, u8 value)
 {
 	if (index < 4)
 		color[index] = value;
-	else if (index < 8)
-		color_fore[index - 4] = value;
-	else if (index < 12)
-		color_back[index - 8] = value;
 	else if (index < 16)
-		color_tevreg3[index - 12] = value;
+		(&color_regs->r)[index - 4] = value;
 	else
 		return false;
 
 	return true;
-}
-
-void Material::AdjustTexCoords(TexCoord tc[]) const
-{
-	if (texture_refs.empty())
-		return;
-
-	// TODO: check if out of range
-	const TextureRef& ref = texture_refs.front();
-
-	// TODO: rotate
-
-	// scale
-	// TODO: there must be better math?
-	auto const expand_values = [](float& v1, float& v2, float scale)
-	{
-		const float
-			avg = (v2 + v1) / 2,
-			adj = (v2 - v1) / 2 * scale;
-
-		v2 = avg + adj;
-		v1 = avg - adj;
-	};
-
-	// scale x
-	expand_values(tc[0].s, tc[1].s, ref.scale.x);
-	expand_values(tc[2].s, tc[3].s, ref.scale.x);
-
-	// scale y
-	expand_values(tc[1].t, tc[2].t, ref.scale.y);
-	expand_values(tc[3].t, tc[0].t, ref.scale.y);
-
-	// translate
-	for (int i = 0; i != 4; ++i)
-	{
-		tc[i].s += ref.translate.x;
-		tc[i].t += ref.translate.y;
-	}
 }

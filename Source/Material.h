@@ -29,6 +29,8 @@ distribution.
 #include "Animator.h"
 #include "Texture.h"
 
+#include "WrapGx.h"
+
 struct TexCoord
 {
 	float s, t;
@@ -41,13 +43,6 @@ public:
 
 	void Apply() const;
 
-	// TODO: remove this guy
-	void AdjustTexCoords(TexCoord tc[]) const;
-
-	// TODO: remove these guys
-	const s16* GetColorFore() const { return color_fore; }
-	const s16* GetColorBack() const { return color_back; }
-
 private:
 	bool ProcessRLTS(u8 type, u8 index, float value);
 	bool ProcessRLMC(u8 index, u8 value);
@@ -58,6 +53,26 @@ private:
 			: tex_index(_tex_index)
 			, wrap_s(_wrap_s), wrap_t(_wrap_t)
 			, texture(NULL)
+		{}
+
+		u16 tex_index;
+		u8 wrap_s, wrap_t;
+
+		Texture* texture;
+	};
+
+	std::vector<TextureRef> texture_refs;
+
+	struct TextureCoordGen
+	{
+		u8 tgen_type, tgen_src, mtrx_src;
+	};
+
+	std::vector<TextureCoordGen> texture_coord_gens;
+
+	struct TextureSrt
+	{
+		TextureSrt()
 		{
 			translate.x = translate.y = scale.x = scale.y = 1.f;
 			rotate = 0;
@@ -69,16 +84,9 @@ private:
 		} translate, scale;
 
 		float rotate;
-
-		u16 tex_index;
-		u8 wrap_s, wrap_t;
-
-		u8 tgen_type, tgen_src, mtrx_src;	// TODO: initialize these guys
-
-		Texture* texture;
 	};
 
-	std::vector<TextureRef> texture_refs;
+	std::vector<TextureSrt> texture_srts;
 
 	struct
 	{
@@ -112,12 +120,10 @@ private:
 
 		u8 color;
 
-		u8 texmapbot;
-
-		u8 texmaptop : 1;
-		u8 ras_sel : 2;
-		u8 tex_sel : 2;
-		u8 empty1 : 3;
+		u16 texmap : 9;
+		u16 ras_sel : 2;
+		u16 tex_sel : 2;
+		u16 empty1 : 3;
 
 		u8 aC : 4;
 		u8 bC : 4;
@@ -129,8 +135,8 @@ private:
 		u8 tevbiasC : 2;
 		u8 tevopC : 4;
 
-		u8 tevregidC : 1;
-		u8 clampC : 2;
+		u8 clampC : 1;
+		u8 tevregidC : 2;
 		u8 selC : 5;
 
 		u8 aA : 4;
@@ -143,8 +149,8 @@ private:
 		u8 tevbiasA : 2;
 		u8 tevopA : 4;
 
-		u8 tevregidA : 1;
-		u8 clampA : 2;
+		u8 clampA : 1;
+		u8 tevregidA : 2;
 		u8 selA : 5;
 
 		u8 indtexid;
@@ -173,14 +179,8 @@ private:
 
 	u8 color[4];
 
-	// why are these 2 byte values?
-	s16 color_fore[4];
-	s16 color_back[4];
-	s16 color_tevreg3[4];	// wtf is a reg3
-	u8 color_tevk[4][4];	// wtf is s tevk1,tevk2 etc...
-
-	// TODO: probably temporary
-	u8 palette_index;
+	GXColorS10 color_regs[3];
+	u8 color_tevk[4][4];
 };
 
 #endif

@@ -58,20 +58,11 @@ void Picture::Draw() const
 {
 	material->Apply();
 
-	TexCoord tc[4];
-	for (int i = 0; i != 4; ++i)
-	{
-		tc[i].s = tex_coords[i].s;
-		tc[i].t = tex_coords[i].t;
-	}
-
-	material->AdjustTexCoords(tc);
-
 	// testing stuff
 	u8 vc[4][4];
 	memcpy(vc, vertex_colors, 4 * 4);
 
-	const s16* const mat_back = material->GetColorBack();
+	//const s16* const mat_back = material->GetColorBack();
 	//const s16* const mat_fore = material->GetColorBack();
 
 	//std::cout << "mat_back[3]: " << mat_back[3] << '\n';
@@ -80,8 +71,8 @@ void Picture::Draw() const
 	{
 		vc[vert][3] = Modulate(vc[vert][3], alpha);
 		
-		for (int c = 0; c != 4; ++c)
-			vc[vert][c] = Modulate(vc[vert][c], mat_back[c]);
+		//for (int c = 0; c != 4; ++c)
+			//vc[vert][c] = Modulate(vc[vert][c], mat_back[c]);
 	}
 
 	// origin
@@ -92,19 +83,19 @@ void Picture::Draw() const
 	GX_Begin(GX_TRIANGLEFAN, GX_VTXFMT0, 4);
 
 	GX_Coloru32(*(u32*)vc[2]);
-	GX_TexCoord2f32(tc[2].s, tc[2].t);
+	GX_TexCoord2f32(tex_coords[2].s, tex_coords[2].t);
 	GX_Position3f32(0.f + offx, 0.f + offy, 0.f);
 
 	GX_Coloru32(*(u32*)vc[3]);
-	GX_TexCoord2f32(tc[3].s, tc[3].t);
+	GX_TexCoord2f32(tex_coords[3].s, tex_coords[3].t);
 	GX_Position3f32(width + offx, 0.f + offy, 0.f);
 
 	GX_Coloru32(*(u32*)vc[1]);
-	GX_TexCoord2f32(tc[1].s, tc[1].t);
+	GX_TexCoord2f32(tex_coords[1].s, tex_coords[1].t);
 	GX_Position3f32(width + offx, height + offy, 0.f);
 
 	GX_Coloru32(*(u32*)vc[0]);
-	GX_TexCoord2f32(tc[0].s, tc[0].t);
+	GX_TexCoord2f32(tex_coords[0].s, tex_coords[0].t);
 	GX_Position3f32(0.f + offx, height + offy, 0.f);
 
 	GX_End();
