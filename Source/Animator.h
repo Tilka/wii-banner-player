@@ -69,7 +69,7 @@ public:
 	struct FrameData
 	{
 		// TODO: can these be named better?
-		u8 data1, data2;
+		u8 data1, data2, data3, data4;
 	};
 
 	FrameData GetFrame(FrameNumber frame_number) const;
@@ -121,8 +121,8 @@ private:
 	virtual bool ProcessRLVI(u8 value) { return false; }	// Visibility
 	virtual bool ProcessRLVC(u8 index, u8 value) { return false; }	// Vertex Color
 	virtual bool ProcessRLMC(u8 index, u8 value) { return false; }	// Material Color
-	virtual bool ProcessRLTP() { return false; }	// Texture Pallete
-	virtual bool ProcessRLIM() { return false; }	// 
+	virtual bool ProcessRLTP(u8 index, u8 value) { return false; }	// Texture Pallete
+	virtual bool ProcessRLIM(u8 type, u8 index, float value) { return false; }	// IndTexture Scale/Rotate/Translate
 };
 
 #endif

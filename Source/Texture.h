@@ -36,29 +36,7 @@ class Texture
 public:
 	Texture(std::istream& file);
 
-	//void Bind(u32 index) const;
-
-	//u16 height;
-	//u16 width;
-
-	//u32 wrap_s;
-	//u32 wrap_t;
-
-	//u32 min_filter;
-	//u32 mag_filter;
-
-	//float lod_bias;
-
-	//u8 edge_lod;
-	//u8 min_lod;
-	//u8 max_lod;
-
-	//u8 unpacked;
-
 	GXTexObj texobj;
-
-//protected:
-	//std::vector<Frame> frames;
 };
 
 #endif

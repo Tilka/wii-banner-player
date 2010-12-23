@@ -58,17 +58,6 @@ public:
 	void Render() const;
 	void SetFrame(FrameNumber frame);
 
-	// temporary function for testing
-	void Print(unsigned int level) const
-	{
-		std::cout << std::string(level, '\t') << "pane: " << name << '\n';
-
-		ForEach(panes, [&](const Pane* pane)
-		{
-			pane->Print(level + 1);
-		});
-	}
-
 	std::vector<Pane*> panes;
 
 private:

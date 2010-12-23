@@ -26,6 +26,7 @@ distribution.
 
 #define NOMINMAX
 #include <Windows.h>
+
 #include <stdint.h>
 #include <string>
 #include <iostream>
@@ -180,11 +181,11 @@ void ForEach(C& container, F func)
 	std::for_each(container.begin(), container.end(), func);
 }
 
-template <typename C, typename F>
-void ForEachReverse(C& container, F func)
-{
-	std::for_each(container.rbegin(), container.rend(), func);
-}
+//template <typename C, typename F>
+//void ForEachReverse(C& container, F func)
+//{
+//	std::for_each(container.rbegin(), container.rend(), func);
+//}
 
 template <typename T>
 void ReadBEArray(std::istream& file, T* data, unsigned int size)
@@ -198,8 +199,10 @@ void ReadBEArray(std::istream& file, T* data, unsigned int size)
 template <typename T>
 void ReadLEArray(std::istream& file, T* data, unsigned int size)
 {
+	auto& lestrm = file >> LE;
+
 	for (unsigned int i = 0; i != size; ++i)
-		file >> LE >> data[i];
+		lestrm >> data[i];
 }
 
 #endif

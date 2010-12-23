@@ -45,7 +45,12 @@ Texture::Texture(std::istream& file)
 
 	// only support a single texture
 	if (count > 1)
+	{
 		count = 1;
+
+		//std::cout << "count > 1\n";
+		//std::cin.get();
+	}
 
 	// read texture offsets
 	std::streamoff next_offset = file.tellg();
@@ -60,15 +65,12 @@ Texture::Texture(std::istream& file)
 
 		next_offset = file.tellg();
 
-		if (palette_offset)
-			std::cout << "ALERT: palette_offset != 0 is not supported!! " << palette_offset << '\n';
-
 		// seek to the texture header
 		file.seekg(file_start + header_offset, std::ios::beg);
 
 		// read texture header
 		u32 format;
-		u32 offset; // to Texture Data
+		u32 texture_data_offset; // to Texture Data
 
 		u16 height, width;
 		u32 wrap_s, wrap_t;
@@ -79,16 +81,28 @@ Texture::Texture(std::istream& file)
 
 		u8 unpacked;
 
-		file >> BE >> height >> width >> format >> offset
+		file >> BE >> height >> width >> format >> texture_data_offset
 			>> wrap_s >> wrap_t >> min_filter >> mag_filter
 			>> lod_bias >> edge_lod >> min_lod >> max_lod >> unpacked;
 
-		// seek to texture data
-		file.seekg(file_start + offset, std::ios::beg);
+		// seek to/read palette header
+		if (palette_offset)
+		{
+			file.seekg(file_start + palette_offset, std::ios::beg);
 
-		// TODO: handle palettes
-		// http://pabut.homeip.net:8000/yagcd/chap14.html#sec14.4
-		//
+			u16 palette_count;
+			u32 palette_format;
+			u16 palette_data_offset;
+
+			file >> BE >> palette_count;
+			file.ignore(2);
+			file >> BE >> palette_format >> palette_data_offset;
+
+			// TODO: complete palete stuffs
+		}
+
+		// seek to texture data
+		file.seekg(file_start + texture_data_offset, std::ios::beg);
 
 		const u32 tex_size = GX_GetTexBufferSize(width, height, format, true, max_lod);
 
@@ -107,9 +121,3 @@ Texture::Texture(std::istream& file)
 		}
 	}
 }
-
-//void Texture::Bind(u32 index) const
-//{
-//	//if (index < frames.size())
-//		//frames[index].Bind();
-//}

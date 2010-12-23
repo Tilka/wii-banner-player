@@ -50,6 +50,10 @@ void Animator::SetFrame(FrameNumber frame_number)
 		case RLMC:
 			result = ProcessRLMC(frame_type.index, (u8)frame_value);
 			break;
+
+		case RLIM:
+			result = ProcessRLIM(frame_type.type, frame_type.index, frame_value);
+			break;
 		}
 
 		//if (!result)
@@ -74,17 +78,14 @@ void Animator::SetFrame(FrameNumber frame_number)
 			break;
 
 		case RLTP:
-			//result = ProcessRLTP(frame_data.data2);
-			break;
-
-		case RLIM:
-			//result = ProcessRLIM(frame_data.data2);
+			result = ProcessRLTP(frame_data.data1, frame_data.data2);
 			break;
 		}
 
 		//if (!result)
 		//	std::cout << "unhandled frame (" << name << "): tag: " << (int)frame_type.tag
 		//	<< " index: " << (int)frame_type.index
+		//	<< " data:" << (int)frame_data.data1 << " " << (int)frame_data.data2
 		//	<< '\n';
 	});
 }
@@ -96,9 +97,8 @@ void StaticFrameHandler::Load(std::istream& file, u16 count)
 		FrameNumber frame;
 		file >> BE >> frame;
 
-		auto& pair = frames[frame];
-		file >> BE >> pair.data1 >> pair.data2;
-		file.seekg(2, std::ios::cur);	// these bytes important? :p
+		auto& data = frames[frame];
+		file >> BE >> data.data1 >> data.data2 >> data.data3 >> data.data4 ;
 
 		//std::cout << "\t\t\t" "frame: " << frame << ' ' << pair.first << " " << pair.second << '\n';
 	}

@@ -25,7 +25,8 @@ distribution.
 
 #include <gl/glew.h>
 
-Material::Material(std::istream& file, const std::vector<Texture*>& textures)
+Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
+	: textures(txtrs)
 {
 	{
 	char read_name[21] = {};
@@ -33,11 +34,11 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	name = read_name;
 	}
 
-	std::cout << "\tmaterial: " << name << '\n';
+	//std::cout << "\tmaterial: " << name << '\n';
 
 	// read colors
 	ReadBEArray(file, &color_regs->r, 4 * 3);
-	ReadBEArray(file, color_tevk[0], sizeof(color_tevk));
+	ReadBEArray(file, color_constants[0], sizeof(color_constants));
 
 	union
 	{
@@ -68,16 +69,10 @@ Material::Material(std::istream& file, const std::vector<Texture*>& textures)
 	// TextureRef
 	for (u32 i = 0; i != flags.texture_ref; ++i)
 	{
-		u16 tex_index;
-		u8 wrap_s, wrap_t;
-		file >> BE >> tex_index >> wrap_s >> wrap_t;
+		TextureRef ref;
+		file >> BE >> ref.tex_index >> ref.wrap_s >> ref.wrap_t;
 
-		texture_refs.push_back(TextureRef(tex_index, wrap_s, wrap_t));
-
-		if (tex_index < textures.size())
-			texture_refs.back().texture = textures[tex_index];
-		else
-			std::cout << "Texture Index Out Of Range!!!\n";
+		texture_refs.push_back(ref);
 	}
 
 	// TextureSRT
@@ -304,10 +299,12 @@ void Material::Apply() const
 	unsigned int i = 0;
 	ForEach(texture_refs, [&](const TextureRef& tr)
 	{
-		if (tr.texture)
+		if (tr.tex_index < textures.size())
 		{
-			GX_LoadTexObj(&tr.texture->texobj, i);
-			GX_InitTexObjWrapMode(&tr.texture->texobj, tr.wrap_s, tr.wrap_t);
+			auto& txtr = *textures[tr.tex_index];
+
+			GX_LoadTexObj(&txtr.texobj, i);
+			GX_InitTexObjWrapMode(&txtr.texobj, tr.wrap_s, tr.wrap_t);
 		}
 
 		++i;
@@ -413,10 +410,35 @@ bool Material::ProcessRLTS(u8 type, u8 index, float value)
 bool Material::ProcessRLMC(u8 index, u8 value)
 {
 	if (index < 4)
+	{
+		// color
 		color[index] = value;
-	else if (index < 16)
+	}
+	else if (index < 0x10)
+	{
+		// initial color of tev color/output registers, often used for foreground/background
 		(&color_regs->r)[index - 4] = value;
+	}
+	else if (index < 0x20)
+	{
+		// tev color constants
+		color_constants[0][index - 0x10] = value;
+	}
 	else
+		return false;
+
+	return true;
+}
+
+bool Material::ProcessRLTP(u8 index, u8 value)
+{
+	// TODO: this aint no good
+
+	//if (index < texture_refs.size())
+	//{
+	//	texture_refs[index].tex_index = value;
+	//}
+	//else
 		return false;
 
 	return true;

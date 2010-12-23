@@ -46,22 +46,17 @@ public:
 private:
 	bool ProcessRLTS(u8 type, u8 index, float value);
 	bool ProcessRLMC(u8 index, u8 value);
+	bool ProcessRLTP(u8 index, u8 value);
 
 	struct TextureRef
 	{
-		TextureRef(u16 _tex_index, u8 _wrap_s, u8 _wrap_t)
-			: tex_index(_tex_index)
-			, wrap_s(_wrap_s), wrap_t(_wrap_t)
-			, texture(NULL)
-		{}
-
 		u16 tex_index;
 		u8 wrap_s, wrap_t;
-
-		Texture* texture;
 	};
 
 	std::vector<TextureRef> texture_refs;
+
+	const std::vector<Texture*>& textures;
 
 	struct TextureCoordGen
 	{
@@ -180,7 +175,7 @@ private:
 	u8 color[4];
 
 	GXColorS10 color_regs[3];
-	u8 color_tevk[4][4];
+	u8 color_constants[4][4];
 };
 
 #endif

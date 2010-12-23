@@ -28,6 +28,8 @@ distribution.
 #include "LZ77.h"
 #include "Sound.h"
 
+#include <gl/glew.h>
+
 struct SectionHeader
 {
 	SectionHeader(std::istream& file)
@@ -338,7 +340,7 @@ WiiBanner::WiiBanner(const std::string& path)
 
 				const auto texture_offset = banner_arc.GetFileOffset("arc/timg/" + fname);
 
-				std::cout << '\t' << textures.size() << ' ' << fname << '\n';
+				//std::cout << '\t' << textures.size() << ' ' << fname << '\n';
 
 				file.clear();
 				file.seekg(texture_offset, std::ios::beg);
@@ -346,7 +348,7 @@ WiiBanner::WiiBanner(const std::string& path)
 
 			}, 4);
 
-			std::cout << "\tloaded " << textures.size() << " textures\n";
+			std::cout << "loaded " << textures.size() << " textures\n";
 			//std::cin.get();
 		}
 		else if (header.magic == "mat1")
@@ -364,7 +366,7 @@ WiiBanner::WiiBanner(const std::string& path)
 				mate_animator_map[materials.back()->name] = mate;
 			});
 
-			std::cout << "\tloaded " << materials.size() << " materials\n";
+			std::cout << "loaded " << materials.size() << " materials\n";
 		}
 		else if (header.magic == "pic1")
 		{
@@ -463,12 +465,6 @@ WiiBanner::WiiBanner(const std::string& path)
 	// update everything for frame 0
 	SetFrame(frame_current);
 
-	// print the pane layout
-	ForEach(panes, [&](const Pane* pane)
-	{
-		pane->Print(0);
-	});
-
 	// print the group layout
 	//ForEach(groups, [&](Group& group)
 	//{
@@ -541,13 +537,12 @@ void WiiBanner::SetFrame(FrameNumber frame_number)
 void WiiBanner::Render()
 {
 	// hax
-	Mtx mt;
-	guMtxIdentity(mt);
+	glLoadIdentity();
 
-	guOrtho(mt, 0, -height, -width, 0, -1000, 1000);
+	glOrtho(-width, 0, -height, 0, -1000.f, 1000.f);
 
 	if (centered)
-		guMtxTrans(mt, -width / 2, -height / 2, 0);
+		glTranslatef(-width / 2, -height / 2, 0.f);
 
 	// usually there is only one root pane, probably always
 	ForEach(panes, [&](Pane* pane)

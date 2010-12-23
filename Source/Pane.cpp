@@ -23,29 +23,30 @@ distribution.
 
 #include "Pane.h"
 
-#include "WrapGx.h"
-
-// TODO: remove
 #include <gl/gl.h>
 
 Pane::Pane(std::istream& file)
 	: hide(false)
 {
-	char pane_name[0x11] = {}; // name in ASCII.
-	char user_data[0x09] = {}; // User data	// is it really....?
-
 	file >> BE >> visible >> origin >> alpha;
 	file.seekg(1, std::ios::cur);
-		
-	file.read(pane_name, 0x10);
-	file.read(user_data, 0x08);
 
-	file >> BE >> translate.x >> translate.y >> translate.z
+	{
+	char read_name[0x11] = {};
+	file.read(read_name, 0x10);
+	name = read_name;
+	}
+
+	{
+	char user_data[0x09] = {}; // User data	// is it really user data there?
+	file.read(user_data, 0x08);
+	}
+
+	file >> BE
+		>> translate.x >> translate.y >> translate.z
 		>> rotate.x >> rotate.y >> rotate.z
 		>> scale.x >> scale.y
 		>> width >> height;
-
-	name = pane_name;
 }
 
 Pane::~Pane()
@@ -112,20 +113,16 @@ void Pane::Render() const
 
 	glPushMatrix();
 
-	Mtx mt;
 	// position
-	guMtxTrans(mt, translate.x, translate.y, translate.z);
+	glTranslatef(translate.x, translate.y, translate.z);
 
 	// rotate
-	guVector vec = { 1.f, 0.f, 0.f };
-	guMtxRotAxisRad(mt, &vec, rotate.x);
-	vec.x = 0.f; vec.y = 1.f;
-	guMtxRotAxisRad(mt, &vec, rotate.y);
-	vec.y = 0.f; vec.z = 1.f;
-	guMtxRotAxisRad(mt, &vec, rotate.z);
+	glRotatef(rotate.x, 1.f, 0.f, 0.f);
+	glRotatef(rotate.y, 0.f, 1.f, 0.f);
+	glRotatef(rotate.z, 0.f, 0.f, 1.f);
 
 	// scale
-	guMtxScale(mt, scale.x, scale.y, 1.f);
+	glScalef(scale.x, scale.y, 1.f);
 
 	// render self
 	Draw();

@@ -23,6 +23,8 @@ distribution.
 
 #include "Picture.h"
 
+#include <gl/glew.h>
+
 // multiply 2 colors
 // assumes u8s, takes any type to avoid multiple conversions
 template <typename C1, typename C2>
@@ -33,7 +35,6 @@ inline u8 Modulate(C1 c1, C2 c2)
 
 Picture::Picture(std::istream& file, const std::vector<Material*>& materials)
 	: Pane(file)
-	, material(NULL)
 {
 	u8 num_texcoords;
 
@@ -41,10 +42,21 @@ Picture::Picture(std::istream& file, const std::vector<Material*>& materials)
 	file >> BE >> mat_index >> num_texcoords;
 	file.seekg(1, std::ios::cur);
 
-	if (mat_index >= materials.size())
-		std::cout << "Material Index Out Of Range!!!\n";
-	else
+	if (mat_index < materials.size())
+	{
 		material = materials[mat_index];
+	}
+	else
+	{
+		material = NULL;
+		std::cout << "Material Index Out Of Range!!!\n";
+	}
+
+	if (num_texcoords > 1)
+	{
+		std::cout << "picture (" << name << ") has more than one set of texcoords!! handle this!\n";
+		//std::cin.get();
+	}
 
 	// read texcoords
 	// TODO: only single texcoords set is supported currently
@@ -58,55 +70,48 @@ void Picture::Draw() const
 {
 	material->Apply();
 
-	// testing stuff
-	u8 vc[4][4];
-	memcpy(vc, vertex_colors, 4 * 4);
-
-	//const s16* const mat_back = material->GetColorBack();
-	//const s16* const mat_fore = material->GetColorBack();
-
-	//std::cout << "mat_back[3]: " << mat_back[3] << '\n';
-	
-	for (int vert = 0; vert != 4; ++vert)
-	{
-		vc[vert][3] = Modulate(vc[vert][3], alpha);
-		
-		//for (int c = 0; c != 4; ++c)
-			//vc[vert][c] = Modulate(vc[vert][c], mat_back[c]);
-	}
+	glPushMatrix();
 
 	// origin
-	const float
-		offx = -width / 2 * (origin % 3),
-		offy = -height / 2 * (2 - origin / 3);
+	glTranslatef(-width / 2 * (origin % 3), -height / 2 * (2 - origin / 3), 0.f);
 
-	GX_Begin(GX_TRIANGLEFAN, GX_VTXFMT0, 4);
+	// TODO: would adding these offsets to each vertex be faster than push,translate,pop?
+	//const float
+	//	offx = -width / 2 * (origin % 3),
+	//	offy = -height / 2 * (2 - origin / 3);
 
-	GX_Coloru32(*(u32*)vc[2]);
-	GX_TexCoord2f32(tex_coords[2].s, tex_coords[2].t);
-	GX_Position3f32(0.f + offx, 0.f + offy, 0.f);
+	// go lambda
+	auto const quad_vertex = [this](unsigned int v, float x, float y)
+	{
+		glColor4ub(vertex_colors[v][0], vertex_colors[v][1], vertex_colors[v][2],
+			Modulate(vertex_colors[v][3], alpha));	// multiply alpha
 
-	GX_Coloru32(*(u32*)vc[3]);
-	GX_TexCoord2f32(tex_coords[3].s, tex_coords[3].t);
-	GX_Position3f32(width + offx, 0.f + offy, 0.f);
+		glTexCoord2f(tex_coords[v].s, tex_coords[v].t);
+		glVertex2f(x, y);
+	};
 
-	GX_Coloru32(*(u32*)vc[1]);
-	GX_TexCoord2f32(tex_coords[1].s, tex_coords[1].t);
-	GX_Position3f32(width + offx, height + offy, 0.f);
+	glBegin(GL_QUADS);
+	quad_vertex(2, 0.f, 0.f);
+	quad_vertex(3, width, 0.f);
+	quad_vertex(1, width, height);
+	quad_vertex(0, 0.f, height);
+	glEnd();
 
-	GX_Coloru32(*(u32*)vc[0]);
-	GX_TexCoord2f32(tex_coords[0].s, tex_coords[0].t);
-	GX_Position3f32(0.f + offx, height + offy, 0.f);
-
-	GX_End();
+	glPopMatrix();
 }
 
 bool Picture::ProcessRLVC(u8 index, u8 value)
 {
-	if (index < 16)
+	if (index < 0x10)
+	{
+		// vertex colors
 		((u8*)vertex_colors)[index] = value;
-	else if (16 == index)
+	}
+	else if (0x10 == index)
+	{
+		// picture's alpha, multiplied with each vertex color
 		alpha = value;
+	}
 	else
 		return false;
 

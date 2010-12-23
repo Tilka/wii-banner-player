@@ -1,9 +1,31 @@
+/*
+Copyright (c) 2010 - Wii Banner Player Project
+
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+claim that you wrote the original software. If you use this software
+in a product, an acknowledgment in the product documentation would be
+appreciated but is not required.
+
+2. Altered source versions must be plainly marked as such, and must not be
+misrepresented as being the original software.
+
+3. This notice may not be removed or altered from any source
+distribution.
+*/
+
 #include "CommonTypes.h"
 #include "Sound.h"
 #include <iostream>
 #include "Types.h"
 #include "LZ77.h"
-#include <stack>
 
 struct BNS
 {
@@ -60,7 +82,7 @@ struct BNS
 	DSPRegs dsp_regs;
 
 	BNS() : adpcm(nullptr) {}
-	~BNS() { delete [] adpcm; }
+	~BNS() { delete[] adpcm; }
 
 	void Open(std::istream& in)
 	{
@@ -119,7 +141,7 @@ struct BNS
 		u32 pcm_pos = pcm_start_pos;
 		u32 adpcm_pos = adpcm_start_pos;
 
-		while (adpcm_pos < adpcm_end_pos * 2)
+		while (adpcm_pos != adpcm_end_pos * 2)
 		{
 			if ((adpcm_pos & 15) == 0)
 			{
@@ -159,7 +181,7 @@ struct BNS
 
 				pcm[pcm_pos++] = sample;
 				if (info.num_channels == 2)
-					pcm_pos++;
+					++pcm_pos;
 			}
 		}
 
@@ -228,7 +250,6 @@ bool BannerStream::Open(std::istream& file)
 	else
 		return false;
 
-	char *data = nullptr;
 	bool ret = false;
 	sf::SoundBuffer SoundData;
 
@@ -236,9 +257,9 @@ bool BannerStream::Open(std::istream& file)
 	{
 		in.seekg(in_start, in.beg);
 		char *data = new char[file_len];
-		ReadLEArray(in, data, file_len);
+		in.read(data, file_len);
 		ret = SoundData.LoadFromMemory(data, file_len);
-		delete [] data;
+		delete[] data;
 	}
 	else
 	{
@@ -246,7 +267,7 @@ bool BannerStream::Open(std::istream& file)
 		bns_file.DecodeToPCM(pcm);
 		ret = SoundData.LoadFromSamples(pcm, bns_file.GetSamplesCount(),
 			bns_file.GetChannelsCount(), bns_file.GetSampleRate());
-		delete [] pcm;
+		delete[] pcm;
 	}
 
 	if (ret)
@@ -270,13 +291,13 @@ bool BannerStream::OnStart()
 bool BannerStream::OnGetData(sf::SoundStream::Chunk& Data)
 {
 	// Check if there is enough data to stream
-	if (myOffset >= myBuffer.size())
+	if (myBuffer.size() == myOffset)
 	{
 		// Returning false means that we want to stop playing the stream
 		return false;
 	}
 	
-	if (myOffset + myBufferSize >= myBuffer.size())
+	if (myOffset + myBufferSize > myBuffer.size())
 	{
 		// Play the last buffer
 		Data.Samples   = &myBuffer[myOffset];

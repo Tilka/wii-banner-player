@@ -1,3 +1,25 @@
+/*
+Copyright (c) 2010 - Wii Banner Player Project
+
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+claim that you wrote the original software. If you use this software
+in a product, an acknowledgment in the product documentation would be
+appreciated but is not required.
+
+2. Altered source versions must be plainly marked as such, and must not be
+misrepresented as being the original software.
+
+3. This notice may not be removed or altered from any source
+distribution.
+*/
 
 #include <gl/glew.h>
 #include <gl/glu.h>
@@ -52,7 +74,7 @@ u32 	GX_GetTexBufferSize (u16 wd, u16 ht, u32 fmt, u8 mipmap, u8 maxlod)
 	const u32 bsw = TexDecoder_GetBlockWidthInTexels(fmt) - 1;
 	const u32 bsh = TexDecoder_GetBlockHeightInTexels(fmt) - 1;
 
-	const u32 expanded_width  = (wd  + bsw) & (~bsw);
+	const u32 expanded_width  = (wd + bsw) & (~bsw);
 	const u32 expanded_height = (ht + bsh) & (~bsh);
 
 	return TexDecoder_GetTextureSizeInBytes(expanded_width, expanded_height, fmt);
@@ -88,7 +110,7 @@ void 	GX_InitTexObj (GXTexObj *obj, void *img_ptr, u16 wd, u16 ht, u8 fmt, u8 wr
 
 	// decode texture
 	auto const pcfmt = TexDecoder_Decode(g_texture_decode_buffer,
-		(u8*)img_ptr, expanded_width, expanded_height, fmt, 0, 0, true);	// TODO: doesn't need to be true, just testing stuff
+		(u8*)img_ptr, expanded_width, expanded_height, fmt, 0, 0);
 
 	// load texture
 	switch (pcfmt)
@@ -149,6 +171,8 @@ void 	GX_InitTexObj (GXTexObj *obj, void *img_ptr, u16 wd, u16 ht, u8 fmt, u8 wr
 
 	if (expanded_width != wd)
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+
+	GX_InitTexObjWrapMode(obj, wrap_s, wrap_t);
 }
 
 void 	GX_InitTexObjWrapMode (GXTexObj *obj, u8 wrap_s, u8 wrap_t)
@@ -269,65 +293,6 @@ void 	GX_SetAlphaCompare (u8 comp0, u8 ref0, u8 aop, u8 comp1, u8 ref1)
 
 
 	//glLogicOp();	// TODO: need to do this guy, but for alpha
-}
-
-void 	GX_Begin (u8 primitve, u8 vtxfmt, u16 vtxcnt)
-{
-	// hax
-	glBegin(GL_TRIANGLE_FAN);
-}
-
-void 	GX_End ()
-{
-	glEnd();
-}
-
-void	GX_Position3f32 (f32 x, f32 y, f32 z)
-{
-	glVertex3f(x, y, z);
-}
-
-void	GX_Color4u8 (u8 r, u8 g, u8 b, u8 a)
-{
-	glColor4ub(r, g, b, a);
-}
-
-void	GX_Coloru32 (u32 c)
-{
-	glColor4ubv((u8*)&c);
-}
-
-void	GX_TexCoord2f32 (f32 s, f32 t)
-{
-	glTexCoord2f(s, t);
-}
-
-// TODO: not using mt at all, fix that
-
-void 	guMtxIdentity (Mtx mt)
-{
-	glLoadIdentity();
-}
-
-void 	guOrtho (Mtx44 mt, f32 t, f32 b, f32 l, f32 r, f32 n, f32 f)
-{
-	glOrtho(l, r, b, t, n, f);
-}
-
-void 	guLightOrtho (Mtx mt, f32 t, f32 b, f32 l, f32 r, f32 scaleS, f32 scaleT, f32 transS, f32 transT)
-{
-	// hax
-	guOrtho(mt, t, b, l, r, -1000, 1000);
-}
-
-void 	guMtxTrans (Mtx mt, f32 xT, f32 yT, f32 zT)
-{
-	glTranslatef(xT, yT, zT);
-}
-
-void 	guMtxScale (Mtx mt, f32 xS, f32 yS, f32 zS)
-{
-	glScalef(xS, yS, zS);
 }
 
 #if TEV_EMULATION == USE_GLSL
@@ -636,11 +601,6 @@ void 	GX_LoadTexObj (GXTexObj *obj, u8 mapid)
 }
 
 #endif
-
-void 	guMtxRotAxisRad (Mtx mt, guVector *axis, f32 rad)
-{
-	glRotatef(rad, axis->x, axis->y, axis->z);
-}
 
 inline void ActiveStage(u8 stage)
 {
