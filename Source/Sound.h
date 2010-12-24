@@ -30,16 +30,19 @@ distribution.
 class BannerStream : public sf::SoundStream
 {
 public:
-	BannerStream();
+	BannerStream() : position(0), loop_position(-1) {}
+
 	bool Open(std::istream& in);
 
 private:
 	virtual bool OnStart();
 	virtual bool OnGetData(sf::SoundStream::Chunk& Data);
 
-	std::vector<sf::Int16> myBuffer;     ///< Internal buffer that holds audio samples
-	std::size_t            myOffset;     ///< Read offset in the sample array
-	std::size_t            myBufferSize; ///< Size of the audio data to stream
+	std::vector<sf::Int16> samples;
+	std::size_t position;
+	std::size_t loop_position;	// -1 means don't loop
+
+	static const std::size_t buffer_size = 40000;	// size of audio chunks to stream
 
 	enum SoundFormat
 	{

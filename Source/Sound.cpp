@@ -204,13 +204,6 @@ struct BNS
 	}
 };
 
-
-BannerStream::BannerStream()
-	: myOffset(0)
-	, myBufferSize(40000)
-{
-}
-
 bool BannerStream::Open(std::istream& file)
 {
 	BNS bns_file;
@@ -246,6 +239,9 @@ bool BannerStream::Open(std::istream& file)
 		format = FORMAT_BNS;
 		in.seekg(in_start, in.beg);
 		bns_file.Open(in);
+
+		if (bns_file.info.loop)
+			loop_position = bns_file.info.loop_start;
 	}
 	else
 		return false;
@@ -273,8 +269,8 @@ bool BannerStream::Open(std::istream& file)
 	if (ret)
 	{
 		Initialize(SoundData.GetChannelsCount(), SoundData.GetSampleRate());
-		const sf::Int16* Data = SoundData.GetSamples();
-		myBuffer.assign(Data, Data + SoundData.GetSamplesCount());
+		const sf::Int16* data = SoundData.GetSamples();
+		samples.assign(data, data + SoundData.GetSamplesCount());
 	}
 	
 	return ret;
@@ -282,37 +278,38 @@ bool BannerStream::Open(std::istream& file)
 
 bool BannerStream::OnStart()
 {
-	// Reset the read offset
-	myOffset = 0;
+	position = 0;
 
 	return true;
 }
 
-bool BannerStream::OnGetData(sf::SoundStream::Chunk& Data)
+bool BannerStream::OnGetData(sf::SoundStream::Chunk& chunk)
 {
 	// Check if there is enough data to stream
-	if (myBuffer.size() == myOffset)
+	if (samples.size() == position)
 	{
 		// Returning false means that we want to stop playing the stream
 		return false;
 	}
 	
-	if (myOffset + myBufferSize > myBuffer.size())
+	if (position + buffer_size >= samples.size())
 	{
 		// Play the last buffer
-		Data.Samples   = &myBuffer[myOffset];
-		Data.NbSamples = myBuffer.size() - myOffset;
-		myOffset += Data.NbSamples;
+		chunk.Samples   = &samples[position];
+		chunk.NbSamples = samples.size() - position;
+		position += chunk.NbSamples;
+
+		if (loop_position < position)
+			position = loop_position;
 	}
 	else
 	{
 		// Fill the stream chunk with a pointer to the audio data and the number
 		// of samples to stream
-		Data.Samples   = &myBuffer[myOffset];
-		Data.NbSamples = myBufferSize;
+		chunk.Samples   = &samples[position];
+		chunk.NbSamples = buffer_size;
 
-		// Update the read offset
-		myOffset += myBufferSize;
+		position += buffer_size;
 	}
 
 	return true;
