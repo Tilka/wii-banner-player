@@ -241,7 +241,7 @@ bool BannerStream::Open(std::istream& file)
 		bns_file.Open(in);
 
 		if (bns_file.info.loop)
-			loop_position = bns_file.info.loop_start;
+			loop_position = bns_file.info.loop_start * bns_file.info.num_channels;
 	}
 	else
 		return false;
