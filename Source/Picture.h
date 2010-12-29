@@ -58,7 +58,7 @@ protected:
 	u16 mat_index;
 
 private:
-	void Draw() const;
+	void Draw(u8 render_alpha) const;
 
 	void ProcessHermiteKey(const KeyType& type, float value);
 };

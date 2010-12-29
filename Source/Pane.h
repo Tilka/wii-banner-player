@@ -30,6 +30,14 @@ distribution.
 
 #include "Animator.h"
 
+// multiply 2 colors
+// assumes u8s, takes any type to avoid multiple conversions
+template <typename C1, typename C2>
+inline u8 MultiplyColors(C1 c1, C2 c2)
+{
+	return (u16)c1 * c2 / 0xff;
+}
+
 namespace WiiBanner
 {
 
@@ -59,13 +67,13 @@ public:
 
 	float width, height;
 
-	void Render() const;
+	void Render(u8 render_alpha) const;
 	void SetFrame(FrameNumber frame);
 
 	std::vector<Pane*> panes;
 
 private:
-	virtual void Draw() const {};
+	virtual void Draw(u8 render_alpha) const {};
 
 protected:
 	void ProcessHermiteKey(const KeyType& type, float value);

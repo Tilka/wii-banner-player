@@ -73,10 +73,13 @@ void Pane::SetFrame(FrameNumber frame)
 	});
 }
 
-void Pane::Render() const
+void Pane::Render(u8 render_alpha) const
 {
 	if (!visible || hide)
 		return;
+
+	// multiply with own alpha
+	render_alpha = MultiplyColors(render_alpha, alpha);
 
 	glPushMatrix();
 
@@ -92,12 +95,12 @@ void Pane::Render() const
 	glScalef(scale.x, scale.y, 1.f);
 
 	// render self
-	Draw();
+	Draw(render_alpha);
 
 	// render children
-	ForEach(panes, [](const Pane* pane)
+	ForEach(panes, [=](const Pane* pane)
 	{
-		pane->Render();
+		pane->Render(render_alpha);
 	});
 
 	glPopMatrix();

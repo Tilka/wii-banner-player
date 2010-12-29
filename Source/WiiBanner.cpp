@@ -553,7 +553,7 @@ void Banner::Render()
 	// usually there is only one root pane, probably always
 	ForEach(panes, [&](Pane* pane)
 	{
-		pane->Render();
+		pane->Render(0xff);	// fully opaque
 	});
 }
 

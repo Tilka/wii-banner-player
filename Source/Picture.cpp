@@ -28,14 +28,6 @@ distribution.
 namespace WiiBanner
 {
 
-// multiply 2 colors
-// assumes u8s, takes any type to avoid multiple conversions
-template <typename C1, typename C2>
-inline u8 Modulate(C1 c1, C2 c2)
-{
-	return (u16)c1 * c2 / 0xff;
-}
-
 Picture::Picture(std::istream& file, const std::vector<Material*>& materials)
 	: Pane(file)
 {
@@ -60,7 +52,7 @@ Picture::Picture(std::istream& file, const std::vector<Material*>& materials)
 	ReadBEArray(file, &tex_coords[0].coords->s, 2 * 4 * num_texcoords);
 }
 
-void Picture::Draw() const
+void Picture::Draw(u8 render_alpha) const
 {
 	material->Apply();
 
@@ -75,11 +67,11 @@ void Picture::Draw() const
 	//	offy = -height / 2 * (2 - origin / 3);
 
 	// go lambda
-	auto const quad_vertex = [this](unsigned int v, float x, float y)
+	auto const quad_vertex = [=](unsigned int v, float x, float y)
 	{
 		// color
 		glColor4ub(vertex_colors[v][0], vertex_colors[v][1], vertex_colors[v][2],
-			Modulate(vertex_colors[v][3], alpha));	// multiply alpha
+			MultiplyColors(vertex_colors[v][3], render_alpha));	// apply alpha
 
 		// tex coords
 		GLuint i = 0;
@@ -112,7 +104,7 @@ void Picture::ProcessHermiteKey(const KeyType& type, float value)
 			// vertex colors
 			((u8*)vertex_colors)[type.target] = (u8)value;
 		}
-		else if (0x10 == type.target)
+		else if (0x10 == type.target)	// TODO: get rid of this part, let Pane::Process... handle it
 		{
 			// picture's alpha, multiplied with each vertex color
 			alpha = (u8)value;
