@@ -47,6 +47,7 @@ class Banner
 {
 public:
 	Banner(const std::string& filename);
+	~Banner();
 
 	void SetFrame(FrameNumber frame);
 	void Render();
@@ -64,10 +65,9 @@ private:
 	float width, height;
 	u8 centered;
 
-	std::vector<Texture*> textures;
-	std::vector<Material*> materials;
-
 	std::vector<Pane*> panes;
+	std::vector<Material*> materials;
+	std::vector<Texture*> textures;
 
 	FrameNumber frame_loop_start, frame_loop_end;
 };

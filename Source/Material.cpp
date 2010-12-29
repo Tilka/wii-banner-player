@@ -341,7 +341,7 @@ void Material::Apply() const
 			glRotatef(srt.rotate, 0.f, 0.f, 1.f);
 			//glTranslatef(-0.5f, -0.5f, 0.f);
 
-			glTranslatef(-srt.translate.x, -srt.translate.y, 0.f);
+			glTranslatef(srt.translate.x, srt.translate.y, 0.f);
 
 			//glTranslatef(0.5f, 0.5f, 0.f);
 			glScalef(srt.scale.x, srt.scale.y, 1.f);
@@ -406,10 +406,11 @@ void Material::ProcessHermiteKey(const KeyType& type, float value)
 
 			*values[type.target] = value;
 		}
+		return;	// TODO: remove this return
 	}
 	else if (type.tag == RLIM)	// ind texture crap
 	{
-
+		return;	// TODO: remove this return
 	}
 	else if (type.tag == RLMC)	// material color
 	{
@@ -417,20 +418,23 @@ void Material::ProcessHermiteKey(const KeyType& type, float value)
 		{
 			// color
 			color[type.target] = (u8)value;
+			return;
 		}
 		else if (type.target < 0x10)
 		{
 			// initial color of tev color/output registers, often used for foreground/background
 			(&color_regs->r)[type.target - 4] = (u16)value;
+			return;
 		}
 		else if (type.target < 0x20)
 		{
 			// tev color constants
 			color_constants[0][type.target - 0x10] = (u8)value;
+			return;
 		}
 	}
-	else
-		Base::ProcessHermiteKey(type, value);
+	
+	Base::ProcessHermiteKey(type, value);
 }
 
 void Material::ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data)

@@ -528,6 +528,24 @@ Banner::Banner(const std::string& filename)
 	sound.Open(opening_arc_file);
 }
 
+Banner::~Banner()
+{
+	ForEach(panes, [](Pane* pane)
+	{
+		delete pane;
+	});
+
+	ForEach(materials, [](Material* material)
+	{
+		delete material;
+	});
+
+	ForEach(textures, [](Texture* texture)
+	{
+		delete texture;
+	});
+}
+
 void Banner::SetFrame(FrameNumber frame_number)
 {
 	ForEach(panes, [&](Pane* pane)

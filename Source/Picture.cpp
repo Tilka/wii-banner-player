@@ -103,15 +103,11 @@ void Picture::ProcessHermiteKey(const KeyType& type, float value)
 		{
 			// vertex colors
 			((u8*)vertex_colors)[type.target] = (u8)value;
-		}
-		else if (0x10 == type.target)	// TODO: get rid of this part, let Pane::Process... handle it
-		{
-			// picture's alpha, multiplied with each vertex color
-			alpha = (u8)value;
+			return;
 		}
 	}
-	else
-		Base::ProcessHermiteKey(type, value);
+	
+	Base::ProcessHermiteKey(type, value);
 }
 
 }

@@ -109,6 +109,8 @@ private:
 class Animator
 {
 public:
+	virtual ~Animator() {}
+
 	virtual void SetFrame(FrameNumber frame);
 
 	void CopyFrames(Animator& rhs, FrameNumber frame_offset);
@@ -119,7 +121,7 @@ public:
 	std::map<KeyType, StepKeyHandler> step_keys;
 	std::map<KeyType, HermiteKeyHandler> hermite_keys;
 
-//private:
+protected:
 	virtual void ProcessHermiteKey(const KeyType& type, float value);
 	virtual void ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data);
 };

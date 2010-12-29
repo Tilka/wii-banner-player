@@ -49,13 +49,23 @@ public:
 	Pane(std::istream& file);
 	virtual ~Pane();
 
-	u8 visible;
-	u8 origin;
-	u8 alpha;
+	void Render(u8 render_alpha) const;
+	void SetFrame(FrameNumber frame);
+
+	std::vector<Pane*> panes;	// TODO: rename children or something?
+
+	float width, height;
 
 	bool hide;	// used by the groups
+	u8 origin;
 
-	struct XYZ
+private:
+	virtual void Draw(u8 render_alpha) const {};
+
+	u8 visible;
+	u8 alpha;
+
+	struct
 	{
 		float x, y, z;
 	} translate, rotate;
@@ -64,16 +74,6 @@ public:
 	{
 		float x, y;
 	} scale;
-
-	float width, height;
-
-	void Render(u8 render_alpha) const;
-	void SetFrame(FrameNumber frame);
-
-	std::vector<Pane*> panes;
-
-private:
-	virtual void Draw(u8 render_alpha) const {};
 
 protected:
 	void ProcessHermiteKey(const KeyType& type, float value);

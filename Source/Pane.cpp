@@ -114,6 +114,7 @@ void Pane::ProcessHermiteKey(const KeyType& type, float value)
 		if (0x10 == type.target)
 		{
 			alpha = (u8)value;
+			return;
 		}
 	}
 	else if (type.tag == RLPA)	// pane animation
@@ -138,10 +139,11 @@ void Pane::ProcessHermiteKey(const KeyType& type, float value)
 			};
 
 			*values[type.target] = value;
+			return;
 		}
 	}
-	else
-		Base::ProcessHermiteKey(type, value);
+
+	Base::ProcessHermiteKey(type, value);
 }
 
 void Pane::ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data)
@@ -149,9 +151,10 @@ void Pane::ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data)
 	if (type.tag == RLVI)	// visibility
 	{
 		visible = data.data2;
+		return;
 	}
-	else
-		Base::ProcessStepKey(type, data);
+	
+	Base::ProcessStepKey(type, data);
 }
 
 }
