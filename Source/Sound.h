@@ -27,6 +27,9 @@ distribution.
 #include <sstream>
 #include <SFML/Audio.hpp>
 
+namespace WiiBanner
+{
+
 class BannerStream : public sf::SoundStream
 {
 public:
@@ -52,5 +55,7 @@ private:
 	};
 	SoundFormat format;
 };
+
+}
 
 #endif

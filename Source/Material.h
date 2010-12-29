@@ -31,30 +31,29 @@ distribution.
 
 #include "WrapGx.h"
 
-struct TexCoord
+namespace WiiBanner
 {
-	float s, t;
-};
 
 class Material : public Animator
 {
 public:
+	typedef Animator Base;
+
 	Material(std::istream& file, const std::vector<Texture*>& textures);
 
 	void Apply() const;
 
 private:
-	bool ProcessRLTS(u8 type, u8 index, float value);
-	bool ProcessRLMC(u8 index, u8 value);
-	bool ProcessRLTP(u8 index, u8 value);
+	void ProcessHermiteKey(const KeyType& type, float value);
+	void ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data);
 
-	struct TextureRef
+	struct TextureMap
 	{
 		u16 tex_index;
 		u8 wrap_s, wrap_t;
 	};
 
-	std::vector<TextureRef> texture_refs;
+	std::vector<TextureMap> texture_maps;
 
 	const std::vector<Texture*>& textures;
 
@@ -107,7 +106,7 @@ private:
 			u8 alpha : 2;
 		};
 
-	} tev_swap_mode_table[4];
+	} tev_swap_mode[4];
 
 	struct TevStage
 	{
@@ -177,5 +176,7 @@ private:
 	GXColorS10 color_regs[3];
 	u8 color_constants[4][4];
 };
+
+}
 
 #endif

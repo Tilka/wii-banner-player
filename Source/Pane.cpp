@@ -25,10 +25,13 @@ distribution.
 
 #include <gl/gl.h>
 
+namespace WiiBanner
+{
+
 Pane::Pane(std::istream& file)
 	: hide(false)
 {
-	file >> BE >> visible >> origin >> alpha;
+	file >> BE >> visible >> origin >> alpha;	// TODO: does a pane's alpha affect its children?
 	file.seekg(1, std::ios::cur);
 
 	{
@@ -56,42 +59,6 @@ Pane::~Pane()
 	{
 		delete pane;
 	});
-}
-
-bool Pane::ProcessRLPA(u8 index, float value)
-{
-	if (index < 10)
-	{
-		float* const values[] =
-		{
-			&translate.x,
-			&translate.y,
-			&translate.z,
-
-			&rotate.x,
-			&rotate.y,
-			&rotate.z,
-
-			&scale.x,
-			&scale.y,
-
-			&width,
-			&height,
-		};
-
-		*values[index] = value;
-	}
-	else
-		return false;
-
-	return true;
-}
-
-bool Pane::ProcessRLVI(u8 value)
-{
-	visible = value;
-
-	return true;
 }
 
 void Pane::SetFrame(FrameNumber frame)
@@ -134,4 +101,54 @@ void Pane::Render() const
 	});
 
 	glPopMatrix();
+}
+
+void Pane::ProcessHermiteKey(const KeyType& type, float value)
+{
+	if (type.tag == RLVC)	// vertex color
+	{
+		// only alpha is supported for Panes afaict
+		if (0x10 == type.target)
+		{
+			alpha = (u8)value;
+		}
+	}
+	else if (type.tag == RLPA)	// pane animation
+	{
+		if (type.target < 10)
+		{
+			float* const values[] =
+			{
+				&translate.x,
+				&translate.y,
+				&translate.z,
+
+				&rotate.x,
+				&rotate.y,
+				&rotate.z,
+
+				&scale.x,
+				&scale.y,
+
+				&width,
+				&height,
+			};
+
+			*values[type.target] = value;
+		}
+	}
+	else
+		Base::ProcessHermiteKey(type, value);
+}
+
+void Pane::ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data)
+{
+	if (type.tag == RLVI)	// visibility
+	{
+		visible = data.data2;
+	}
+	else
+		Base::ProcessStepKey(type, data);
+}
+
 }

@@ -28,9 +28,12 @@ distribution.
 
 #include "Types.h"
 
+namespace WiiBanner
+{
+
 typedef float FrameNumber;
 
-enum FRAME_TAG
+enum KeyFrameTag
 {
 	RLPA,
 	RLTS,
@@ -41,63 +44,66 @@ enum FRAME_TAG
 	RLIM
 };
 
-struct FrameType
+struct KeyType
 {
-	FrameType(FRAME_TAG _tag, u8 _type, u8 _index)
+	KeyType(KeyFrameTag _tag, u8 _index, u8 _target)
 		: tag(_tag)
-		, type(_type)
 		, index(_index)
+		, target(_target)
 	{}
 
-	bool operator<(const FrameType& rhs) const
+	bool operator<(const KeyType& rhs) const
 	{
 		return memcmp(this, &rhs, sizeof(*this)) < 0;
 	}
 
-	const FRAME_TAG tag;
-	// TODO: rename these when i figure out all their purposes
-	const u8 type, index;
+	const KeyFrameTag tag;
+	const u8 index, target;
 };
 
 class Animator;
 
-class StaticFrameHandler
+class StepKeyHandler
 {
 public:
 	void Load(std::istream& file, u16 count);
 
-	struct FrameData
+	union KeyData
 	{
-		// TODO: can these be named better?
-		u8 data1, data2, data3, data4;
+		struct
+		{
+			u8 data1, data2;
+		};
+
+		u16 value;
 	};
 
-	FrameData GetFrame(FrameNumber frame_number) const;
-	void CopyFrames(const StaticFrameHandler& kf, FrameNumber frame_offset);
+	KeyData GetFrame(FrameNumber frame_number) const;
+	void CopyFrames(const StepKeyHandler& kf, FrameNumber frame_offset);
 
 private:
 	void Process(FrameNumber frame, Animator& animator) const;
 
-	std::map<FrameNumber, FrameData> frames;
+	std::map<FrameNumber, KeyData> keys;
 };
 
-class KeyFrameHandler
+class HermiteKeyHandler
 {
 public:
 	void Load(std::istream& file, u16 count);
 
-	struct FrameData
+	struct KeyData
 	{
 		float value, slope;
 	};
 
 	float GetFrame(FrameNumber frame_number) const;
-	void CopyFrames(const KeyFrameHandler& kf, FrameNumber frame_offset);
+	void CopyFrames(const HermiteKeyHandler& kf, FrameNumber frame_offset);
 
 private:
 	void Process(FrameNumber frame, Animator& animator) const;
 
-	std::multimap<FrameNumber, FrameData> frames;
+	std::multimap<FrameNumber, KeyData> keys;
 };
 
 class Animator
@@ -110,19 +116,14 @@ public:
 //protected:
 	std::string name;
 
-	std::map<FrameType, StaticFrameHandler> static_frames;
-	std::map<FrameType, KeyFrameHandler> key_frames;
+	std::map<KeyType, StepKeyHandler> step_keys;
+	std::map<KeyType, HermiteKeyHandler> hermite_keys;
 
-private:
-	// TODO: can these be named better? :p
-
-	virtual bool ProcessRLPA(u8 index, float value) { return false; }	// Pane Animation
-	virtual bool ProcessRLTS(u8 type, u8 index, float value) { return false; }	// Texture Scale/Rotate/Translate
-	virtual bool ProcessRLVI(u8 value) { return false; }	// Visibility
-	virtual bool ProcessRLVC(u8 index, u8 value) { return false; }	// Vertex Color
-	virtual bool ProcessRLMC(u8 index, u8 value) { return false; }	// Material Color
-	virtual bool ProcessRLTP(u8 index, u8 value) { return false; }	// Texture Pallete
-	virtual bool ProcessRLIM(u8 type, u8 index, float value) { return false; }	// IndTexture Scale/Rotate/Translate
+//private:
+	virtual void ProcessHermiteKey(const KeyType& type, float value);
+	virtual void ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data);
 };
+
+}
 
 #endif

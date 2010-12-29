@@ -25,6 +25,9 @@ distribution.
 
 #include <gl/glew.h>
 
+namespace WiiBanner
+{
+
 // multiply 2 colors
 // assumes u8s, takes any type to avoid multiple conversions
 template <typename C1, typename C2>
@@ -52,18 +55,9 @@ Picture::Picture(std::istream& file, const std::vector<Material*>& materials)
 		std::cout << "Material Index Out Of Range!!!\n";
 	}
 
-	if (num_texcoords > 1)
-	{
-		std::cout << "picture (" << name << ") has more than one set of texcoords!! handle this!\n";
-		//std::cin.get();
-	}
-
-	// read texcoords
-	// TODO: only single texcoords set is supported currently
-	while (num_texcoords--)
-	{
-		ReadBEArray(file, (float*)tex_coords, 8);
-	}
+	// read tex coords
+	tex_coords.resize(num_texcoords);
+	ReadBEArray(file, &tex_coords[0].coords->s, 2 * 4 * num_texcoords);
 }
 
 void Picture::Draw() const
@@ -83,10 +77,19 @@ void Picture::Draw() const
 	// go lambda
 	auto const quad_vertex = [this](unsigned int v, float x, float y)
 	{
+		// color
 		glColor4ub(vertex_colors[v][0], vertex_colors[v][1], vertex_colors[v][2],
 			Modulate(vertex_colors[v][3], alpha));	// multiply alpha
 
-		glTexCoord2f(tex_coords[v].s, tex_coords[v].t);
+		// tex coords
+		GLuint i = 0;
+		ForEach(tex_coords, [&](const TexCoords& tc)
+		{
+			glMultiTexCoord2fv(GL_TEXTURE0 + i, &tc.coords[v].s);
+			++i;
+		});
+
+		// position
 		glVertex2f(x, y);
 	};
 
@@ -100,20 +103,23 @@ void Picture::Draw() const
 	glPopMatrix();
 }
 
-bool Picture::ProcessRLVC(u8 index, u8 value)
+void Picture::ProcessHermiteKey(const KeyType& type, float value)
 {
-	if (index < 0x10)
+	if (type.tag == RLVC)	// vertex color
 	{
-		// vertex colors
-		((u8*)vertex_colors)[index] = value;
-	}
-	else if (0x10 == index)
-	{
-		// picture's alpha, multiplied with each vertex color
-		alpha = value;
+		if (type.target < 0x10)
+		{
+			// vertex colors
+			((u8*)vertex_colors)[type.target] = (u8)value;
+		}
+		else if (0x10 == type.target)
+		{
+			// picture's alpha, multiplied with each vertex color
+			alpha = (u8)value;
+		}
 	}
 	else
-		return false;
+		Base::ProcessHermiteKey(type, value);
+}
 
-	return true;
 }

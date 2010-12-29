@@ -120,7 +120,7 @@ int main(int argc, char* argv[])
 
 	GX_Init(0, 0);
 
-	WiiBanner banner(fname);
+	WiiBanner::Banner banner(fname);
 
 	window.SetSize(banner.GetWidth(), banner.GetHeight());
 

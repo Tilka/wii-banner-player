@@ -25,28 +25,29 @@ distribution.
 
 #include "Texture.h"
 
-static u8 g_texture_read_buffer[512 * 512 * 4];
+namespace WiiBanner
+{
+
+static char g_texture_read_buffer[512 * 512 * 4];
 
 Texture::Texture(std::istream& file)
 {
 	const std::streamoff file_start = file.tellg();
 
 	// read file header
-	FourCC magic; // Magic (0x00, 0x20, 0xAF, 0x30)
-	u32 count; // ntextures - Number of Textures in File
-	u32 header_size; // size of Header (always 0x0c in files with this structure)
+	FourCC magic; // (0x00, 0x20, 0xAF, 0x30)
+	u32 texture_count;
+	u32 header_size; // always 0x0c
 
-	file >> magic >> BE >> count >> header_size;
-
-	//std::cout << "Texture::Texture() count = " << count << '\n';
+	file >> magic >> BE >> texture_count >> header_size;
 
 	// seek to end of header
 	file.seekg(header_size - 0xC, std::ios::cur);
 
 	// only support a single texture
-	if (count > 1)
+	if (texture_count > 1)
 	{
-		count = 1;
+		texture_count = 1;
 
 		//std::cout << "count > 1\n";
 		//std::cin.get();
@@ -54,7 +55,7 @@ Texture::Texture(std::istream& file)
 
 	// read texture offsets
 	std::streamoff next_offset = file.tellg();
-	while (count--)
+	while (texture_count--)
 	{
 		file.seekg(next_offset, std::ios::beg);
 
@@ -70,7 +71,7 @@ Texture::Texture(std::istream& file)
 
 		// read texture header
 		u32 format;
-		u32 texture_data_offset; // to Texture Data
+		u32 texture_data_offset;
 
 		u16 height, width;
 		u32 wrap_s, wrap_t;
@@ -99,6 +100,7 @@ Texture::Texture(std::istream& file)
 			file >> BE >> palette_format >> palette_data_offset;
 
 			// TODO: complete palete stuffs
+			std::cout << "palette_offset != 0 is not supported!!\n";
 		}
 
 		// seek to texture data
@@ -110,7 +112,7 @@ Texture::Texture(std::istream& file)
 			std::cout << "texture is too large\n";
 		else
 		{
-			file.read((char*)g_texture_read_buffer, tex_size);
+			file.read(g_texture_read_buffer, tex_size);
 
 			// load the texture
 			GX_InitTexObj(&texobj, g_texture_read_buffer,
@@ -120,4 +122,6 @@ Texture::Texture(std::istream& file)
 			GX_InitTexObjFilterMode(&texobj, min_filter, mag_filter);
 		}
 	}
+}
+
 }

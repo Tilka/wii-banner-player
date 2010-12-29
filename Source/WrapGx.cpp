@@ -471,6 +471,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 		"color_registers" "2",
 	};
 
+	//unsigned int i = 0;
 	ForEach(stages, [&](const TevStageProps& stage)
 	{
 		// current texture color
@@ -510,13 +511,15 @@ void CompiledTevStages::Compile(const TevStages& stages)
 		frag_ss << output_registers[stage.alpha_regid] << ".a = color" ".a;";
 
 		frag_ss << '}';
+
+		//++i;
 	});
 
 	frag_ss << "gl_FragColor = color_previous;";
 
 	frag_ss << '}';
 
-	std::cout << frag_ss.str() << '\n';
+	//std::cout << frag_ss.str() << '\n';
 
 	// create/compile fragment shader
 	fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -539,8 +542,12 @@ void CompiledTevStages::Compile(const TevStages& stages)
 
 	glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &vert_compiled);
 	glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &frag_compiled);
-	
-	std::cout << "compilation: vert/frag: " << vert_compiled << '/' << frag_compiled << '\n';
+
+	if (!vert_compiled)
+		std::cout << "Failed to compile vertex shader\n";
+
+	if (!frag_compiled)
+		std::cout << "Failed to compile fragment shader\n";
 	}
 
 	// create program, attach shaders
@@ -552,7 +559,9 @@ void CompiledTevStages::Compile(const TevStages& stages)
 	glLinkProgram(program);
 	GLint link_status;
 	glGetProgramiv(program, GL_LINK_STATUS, &link_status);
-	std::cout << "link: " << link_status << '\n';
+
+	if (!link_status)
+		std::cout << "Failed to link program!\n";
 
 	glUseProgram(program);
 

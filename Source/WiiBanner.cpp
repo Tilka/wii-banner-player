@@ -30,6 +30,9 @@ distribution.
 
 #include <gl/glew.h>
 
+namespace WiiBanner
+{
+
 struct SectionHeader
 {
 	SectionHeader(std::istream& file)
@@ -90,26 +93,33 @@ FrameNumber LoadAnimators(std::istream& file, F func)
 	u16 frame_count; // number of frames
 
 	// read header
-	FourCC magic; // "RLAN" in ASCII.
-	u16 endian; // Always 0xFEFF. Tells endian.
-	u16 version; // Always 0x0008. Version of brlan format
-	u32 file_size; // Size of whole file, including the header.
-	u16 offset; // The offset to the pa*1 header from the start of file.
-	u16 section_count; // How many pa*1 sections there are
+	FourCC magic; // "RLAN"
+	u16 endian; // always 0xFEFF
+	u16 version; // always 0x0008
 
-	file >> magic >> BE >> endian >> version
-		>> file_size >> offset >> section_count;
+	file >> magic >> BE >> endian >> version;
 
 	if (magic != "RLAN"
 		|| endian != 0xFEFF
 		|| version != 0x008
-		|| section_count != 1 // only a single pa*1 section is currently supported
 		)
 		return 0;	// bad header
 
-	// seek to pai1_header
+
+	u32 file_size; // size of entire file including header
+	u16 offset; // offset to the first section, from start of file
+	u16 section_count;
+
+	file >> BE >> file_size >> offset >> section_count;
+
+	// only a single pa*1 section is currently supported
+	if (section_count > 1)
+		section_count = 1;
+
+	// seek to header of first section
 	file.seekg(file_start + offset, std::ios::beg);
 
+	// read each section
 	SectionHeader header(file);
 	while (section_count--)
 	{
@@ -118,14 +128,14 @@ FrameNumber LoadAnimators(std::istream& file, F func)
 
 		if (header.magic == "pai1")
 		{
-			u8 flags; // Flags
-			u8 padding; // Padding
-			u16 num_timgs; // Number of timgs?
-			u16 num_entries; // Number of tags in the brlan.
-			u32 entry_offset; // Offset to entries. (Relative to start of pai1 header.)
+			u8 flags;
+			u8 padding;
+			u16 timg_count; // ?
+			u16 animator_count;
+			u32 entry_offset;
 
 			file >> BE >> frame_count >> flags
-				>> padding >> num_timgs >> num_entries;
+				>> padding >> timg_count >> animator_count;
 
 			// extra padding if bit 25 is set, idk why
 			// TODO: never true
@@ -141,36 +151,36 @@ FrameNumber LoadAnimators(std::istream& file, F func)
 			file >> BE >> entry_offset;
 			file.seekg(header.start + entry_offset);
 
-			// read entries
-			ReadOffsetList(file, num_entries, header.start, [&]()
+			// read each animator
+			ReadOffsetList(file, animator_count, header.start, [&]()
 			{
 				const std::streamoff origin = file.tellg();
 
 				Animator animator;
 
-				char name[21] = {}; // Name of the BRLAN entry. (Must be defined in the BRLYT)
-				u8 num_tags;
+				{
+				char read_name[21] = {};	// this name must be defined in the brlyt file
+				file.read(read_name, 20);
+				animator.name = read_name;
+				}
+
+				u8 tag_count;
 				u8 is_material;
-				u16 offset;	// TODO: not sure if offset
+				u16 offset;
 
-				// read the entry
-				file.read(name, 20) >> BE >> num_tags >> is_material >> offset;
+				file >> BE >> tag_count >> is_material >> offset;
 
-				animator.name = name;
-			
-				//std::cout << "entry: " << name << '\n';
-
-				ReadOffsetList(file, num_tags, origin, [&]()
+				ReadOffsetList(file, tag_count, origin, [&]()
 				{
 					const std::streamoff origin = file.tellg();
 
 					FourCC magic;
-					u8 entry_count; // How many entries in this chunk.
+					u8 entry_count;
 
 					file >> magic >> entry_count;
 					file.seekg(3, std::ios::cur);	// some padding
 
-					FRAME_TAG tag = (FRAME_TAG)-1;
+					KeyFrameTag tag = (KeyFrameTag)-1;
 					if (magic == "RLPA")
 						tag = RLPA;
 					else if (magic == "RLTS")
@@ -192,33 +202,31 @@ FrameNumber LoadAnimators(std::istream& file, F func)
 						//std::cin.get();
 					}
 
-					//std::cout << "\ttag: ";
-					//std::cout.write((char*)magic.data, 4) << '\n';
-
 					ReadOffsetList(file, entry_count, origin, [&]
 					{
-						u8 type;
 						u8 index;
-						u16 data_type; // Every case has been 0x0200 // 0x0100 for pairs
-						u16 frame_count; // How many frames
-						u16 pad1; // All cases I've seen is zero.
-						u32 offset; // Offset to tag data
+						u8 target;
+						u8 data_type;
+						u8 pad;
+						u16 frame_count;
+						u16 pad1;
+						u32 offset;
 
-						file >> BE >> type >> index >> data_type
+						file >> BE >> index >> target >> data_type >> pad
 							>> frame_count >> pad1 >> offset;
 
-						//std::cout << "\t\ttagentry: index: " << (int)index << " frame_count: " << frame_count << '\n';
-
-						const FrameType frame_type(tag, type, index);
+						const KeyType frame_type(tag, index, target);
 
 						switch (data_type)
 						{
-						case 0x0100:
-							animator.static_frames[frame_type].Load(file, frame_count);
+							// step key frame
+						case 0x01:
+							animator.step_keys[frame_type].Load(file, frame_count);
 							break;
 
-						case 0x0200:
-							animator.key_frames[frame_type].Load(file, frame_count);
+							// hermite key frame
+						case 0x02:
+							animator.hermite_keys[frame_type].Load(file, frame_count);
 							break;
 
 						default:
@@ -237,7 +245,7 @@ FrameNumber LoadAnimators(std::istream& file, F func)
 	return frame_count;
 }
 
-WiiBanner::WiiBanner(const std::string& path)
+Banner::Banner(const std::string& filename)
 	: frame_current(0)
 	, frame_loop_start(0)
 	, frame_loop_end(0)
@@ -266,7 +274,7 @@ WiiBanner::WiiBanner(const std::string& path)
 
 	// bunch of crap to parse/decompress archives multiple times
 
-	std::ifstream opening_arc_file(path, std::ios::binary | std::ios::in);
+	std::ifstream opening_arc_file(filename, std::ios::binary | std::ios::in);
 	opening_arc_file.seekg(0x600);	// skip the header
 	DiscIO::CARCFile opening_arc(opening_arc_file);
 
@@ -375,7 +383,7 @@ WiiBanner::WiiBanner(const std::string& path)
 			pane_animator_map[pic->name] = pic;
 		}
 		// TODO: these "bnd1" sections seem to tell the wii the viewport for different screen sizes
-		else if (header.magic == "pan1" || header.magic == "bnd1")
+		else if (header.magic == "pan1"/* || header.magic == "bnd1"*/)
 		{
 			pane_stack.top()->push_back(last_pane = new Pane(file));
 			pane_animator_map[last_pane->name] = last_pane;
@@ -424,7 +432,7 @@ WiiBanner::WiiBanner(const std::string& path)
 		{
 			std::cout << "UNKNOWN SECTION: ";
 			std::cout.write((char*)header.magic.data, 4) << '\n';
-			std::cin.get();
+			//std::cin.get();
 		}
 	}
 
@@ -436,7 +444,6 @@ WiiBanner::WiiBanner(const std::string& path)
 			static_cast<Animator*>(pane_animator_map[an.name]);
 
 		if (anim)
-			// TODO: not positive about this 2nd param
 			anim->CopyFrames(an, frame_loop_start);
 	};
 
@@ -521,7 +528,7 @@ WiiBanner::WiiBanner(const std::string& path)
 	sound.Open(opening_arc_file);
 }
 
-void WiiBanner::SetFrame(FrameNumber frame_number)
+void Banner::SetFrame(FrameNumber frame_number)
 {
 	ForEach(panes, [&](Pane* pane)
 	{
@@ -534,9 +541,8 @@ void WiiBanner::SetFrame(FrameNumber frame_number)
 	});
 }
 
-void WiiBanner::Render()
+void Banner::Render()
 {
-	// hax
 	glLoadIdentity();
 
 	glOrtho(-width, 0, -height, 0, -1000.f, 1000.f);
@@ -551,7 +557,7 @@ void WiiBanner::Render()
 	});
 }
 
-void WiiBanner::AdvanceFrame()
+void Banner::AdvanceFrame()
 {
 	++frame_current;
 
@@ -560,4 +566,6 @@ void WiiBanner::AdvanceFrame()
 		frame_current = frame_loop_start;
 
 	SetFrame(frame_current);
+}
+
 }

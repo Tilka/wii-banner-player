@@ -40,10 +40,13 @@ distribution.
 
 #include "Types.h"
 
-class WiiBanner
+namespace WiiBanner
+{
+
+class Banner
 {
 public:
-	WiiBanner(const std::string& path);
+	Banner(const std::string& filename);
 
 	void SetFrame(FrameNumber frame);
 	void Render();
@@ -68,5 +71,7 @@ private:
 
 	FrameNumber frame_loop_start, frame_loop_end;
 };
+
+}
 
 #endif

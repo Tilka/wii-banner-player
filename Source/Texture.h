@@ -31,6 +31,9 @@ distribution.
 
 #include "WrapGx.h"
 
+namespace WiiBanner
+{
+
 class Texture
 {
 public:
@@ -38,5 +41,7 @@ public:
 
 	GXTexObj texobj;
 };
+
+}
 
 #endif

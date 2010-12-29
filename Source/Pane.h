@@ -30,13 +30,17 @@ distribution.
 
 #include "Animator.h"
 
+namespace WiiBanner
+{
+
 class Pane : public Animator
 {
 public:
+	typedef Animator Base;
+
 	Pane(std::istream& file);
 	virtual ~Pane();
 
-public:
 	u8 visible;
 	u8 origin;
 	u8 alpha;
@@ -63,8 +67,11 @@ public:
 private:
 	virtual void Draw() const {};
 
-	bool ProcessRLPA(u8 index, float value);
-	bool ProcessRLVI(u8 value);
+protected:
+	void ProcessHermiteKey(const KeyType& type, float value);
+	void ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data);
 };
+
+}
 
 #endif

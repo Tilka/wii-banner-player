@@ -27,15 +27,31 @@ distribution.
 #include "Pane.h"
 #include "Material.h"
 
+#include <vector>
+
+namespace WiiBanner
+{
+
 class Picture : public Pane
 {
 public:
+	typedef Pane Base;
+
 	Picture(std::istream& file, const std::vector<Material*>& materials);
 
 protected:
 	const Material* material;
 	
-	struct TexCoord tex_coords[4];
+	struct TexCoords
+	{
+		struct
+		{
+			float s, t;
+
+		} coords[4];
+	};
+
+	std::vector<TexCoords> tex_coords;
 
 	u8 vertex_colors[4][4];
 
@@ -44,7 +60,9 @@ protected:
 private:
 	void Draw() const;
 
-	bool ProcessRLVC(u8 index, u8 value);
+	void ProcessHermiteKey(const KeyType& type, float value);
 };
+
+}
 
 #endif

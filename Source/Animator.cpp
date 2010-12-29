@@ -23,92 +23,49 @@ distribution.
 
 #include "Animator.h"
 
+namespace WiiBanner
+{
+
 void Animator::SetFrame(FrameNumber frame_number)
 {
-	ForEach(key_frames, [=](const std::pair<const FrameType&, const KeyFrameHandler&> frame_handler)
+	ForEach(hermite_keys, [=](const std::pair<const KeyType&, const HermiteKeyHandler&> frame_handler)
 	{
+		const auto& frame_type = frame_handler.first;
 		const auto frame_value = frame_handler.second.GetFrame(frame_number);
 
-		const auto& frame_type = frame_handler.first;
-
-		bool result = false;
-
-		switch (frame_type.tag)
-		{
-		case RLPA:
-			result = ProcessRLPA(frame_type.index, frame_value);
-			break;
-
-		case RLTS:
-			result = ProcessRLTS(frame_type.type, frame_type.index, frame_value);
-			break;
-
-		case RLVC:
-			result = ProcessRLVC(frame_type.index, (u8)frame_value);
-			break;
-
-		case RLMC:
-			result = ProcessRLMC(frame_type.index, (u8)frame_value);
-			break;
-
-		case RLIM:
-			result = ProcessRLIM(frame_type.type, frame_type.index, frame_value);
-			break;
-		}
-
-		//if (!result)
-		//	std::cout << "unhandled frame (" << name << "): tag: " << (int)frame_type.tag
-		//	<< " type: " << (int)frame_type.type
-		//	<< " index: " << (int)frame_type.index
-		//	<< '\n';
+		ProcessHermiteKey(frame_type, frame_value);
 	});
 
-	ForEach(static_frames, [=](const std::pair<const FrameType&, const StaticFrameHandler&> frame_handler)
+	ForEach(step_keys, [=](const std::pair<const KeyType&, const StepKeyHandler&> frame_handler)
 	{
+		const auto& frame_type = frame_handler.first;
 		auto const frame_data = frame_handler.second.GetFrame(frame_number);
 
-		const auto& frame_type = frame_handler.first;
-
-		bool result = false;
-
-		switch (frame_type.tag)
-		{
-		case RLVI:
-			result = ProcessRLVI(frame_data.data2);
-			break;
-
-		case RLTP:
-			result = ProcessRLTP(frame_data.data1, frame_data.data2);
-			break;
-		}
-
-		//if (!result)
-		//	std::cout << "unhandled frame (" << name << "): tag: " << (int)frame_type.tag
-		//	<< " index: " << (int)frame_type.index
-		//	<< " data:" << (int)frame_data.data1 << " " << (int)frame_data.data2
-		//	<< '\n';
+		ProcessStepKey(frame_type, frame_data);
 	});
 }
 
-void StaticFrameHandler::Load(std::istream& file, u16 count)
+void StepKeyHandler::Load(std::istream& file, u16 count)
 {
 	while (count--)
 	{
 		FrameNumber frame;
 		file >> BE >> frame;
 
-		auto& data = frames[frame];
-		file >> BE >> data.data1 >> data.data2 >> data.data3 >> data.data4 ;
+		auto& data = keys[frame];
+		file >> BE >> data.data1 >> data.data2;
+
+		file.seekg(2, std::ios::cur);
 
 		//std::cout << "\t\t\t" "frame: " << frame << ' ' << pair.first << " " << pair.second << '\n';
 	}
 }
 
-void KeyFrameHandler::Load(std::istream& file, u16 count)
+void HermiteKeyHandler::Load(std::istream& file, u16 count)
 {
 	while (count--)
 	{
-		std::pair<FrameNumber, FrameData> pair;
+		std::pair<FrameNumber, KeyData> pair;
 
 		// read the frame number
 		file >> BE >> pair.first;
@@ -116,45 +73,45 @@ void KeyFrameHandler::Load(std::istream& file, u16 count)
 		// read the value and slope
 		file >> BE >> pair.second.value >> pair.second.slope;
 
-		frames.insert(pair);
+		keys.insert(pair);
 
-		//std::cout << "\t\t\t" "frame: " << frame << ' ' << frames[frame] << '\n';
+		//std::cout << "\t\t\t" "frame: " << frame << ' ' << keys[frame] << '\n';
 	}
 }
 
-StaticFrameHandler::FrameData StaticFrameHandler::GetFrame(FrameNumber frame_number) const
+StepKeyHandler::KeyData StepKeyHandler::GetFrame(FrameNumber frame_number) const
 {
 	// assuming not empty, a safe assumption currently
 
 	// find the current frame, or the one after it
-	auto frame_it = frames.lower_bound(frame_number);
+	auto frame_it = keys.lower_bound(frame_number);
 
 	// current frame is higher than any keyframe, use the last keyframe
-	if (frames.end() == frame_it)
+	if (keys.end() == frame_it)
 		--frame_it;
 
 	// if this is after the current frame and not the first keyframe, use the previous one
-	if (frame_number < frame_it->first && frames.begin() != frame_it)
+	if (frame_number < frame_it->first && keys.begin() != frame_it)
 		--frame_it;
 
 	return frame_it->second;
 }
 
-float KeyFrameHandler::GetFrame(FrameNumber frame_number) const
+float HermiteKeyHandler::GetFrame(FrameNumber frame_number) const
 {
 	// assuming not empty, a safe assumption currently
 
 	// find the current keyframe, or the one after it
-	auto next = frames.lower_bound(frame_number);
+	auto next = keys.lower_bound(frame_number);
 	
 	// current frame is higher than any keyframe, use the last keyframe
-	if (frames.end() == next)
+	if (keys.end() == next)
 		--next;
 
 	auto prev = next;
 
 	// if this is after the current frame and not the first keyframe, use the previous one
-	if (frame_number < prev->first && frames.begin() != prev)
+	if (frame_number < prev->first && keys.begin() != prev)
 		--prev;
 
 	const float nf = next->first - prev->first;
@@ -185,31 +142,49 @@ float KeyFrameHandler::GetFrame(FrameNumber frame_number) const
 	}
 }
 
-void StaticFrameHandler::CopyFrames(const StaticFrameHandler& fh, FrameNumber frame_offset)
+void StepKeyHandler::CopyFrames(const StepKeyHandler& fh, FrameNumber frame_offset)
 {
-	ForEach(fh.frames, [=](const std::pair<const FrameNumber, const FrameData&> frame)
+	ForEach(fh.keys, [=](const std::pair<const FrameNumber, const KeyData&> frame)
 	{
-		frames[frame.first + frame_offset] = frame.second;
+		keys[frame.first + frame_offset] = frame.second;
 	});
 }
 
-void KeyFrameHandler::CopyFrames(const KeyFrameHandler& fh, FrameNumber frame_offset)
+void HermiteKeyHandler::CopyFrames(const HermiteKeyHandler& fh, FrameNumber frame_offset)
 {
-	ForEach(fh.frames, [=](const std::pair<const FrameNumber, const FrameData&> frame)
+	ForEach(fh.keys, [=](const std::pair<const FrameNumber, const KeyData&> frame)
 	{
-		frames.insert(std::make_pair(frame.first + frame_offset, frame.second));
+		keys.insert(std::make_pair(frame.first + frame_offset, frame.second));
 	});
 }
 
 void Animator::CopyFrames(Animator& rhs, FrameNumber frame_offset)
 {
-	ForEach(rhs.key_frames, [=](const std::pair<const FrameType&, const KeyFrameHandler&> kf)
+	ForEach(rhs.hermite_keys, [=](const std::pair<const KeyType&, const HermiteKeyHandler&> kf)
 	{
-		key_frames[kf.first].CopyFrames(kf.second, frame_offset);
+		hermite_keys[kf.first].CopyFrames(kf.second, frame_offset);
 	});
 
-	ForEach(rhs.static_frames, [=](const std::pair<const FrameType&, const StaticFrameHandler&> kf)
+	ForEach(rhs.step_keys, [=](const std::pair<const KeyType&, const StepKeyHandler&> kf)
 	{
-		static_frames[kf.first].CopyFrames(kf.second, frame_offset);
+		step_keys[kf.first].CopyFrames(kf.second, frame_offset);
 	});
+}
+
+void Animator::ProcessHermiteKey(const KeyType& type, float value)
+{
+	std::cout << "unhandled key (" << name << "): tag: " << (int)type.tag
+	<< " index: " << (int)type.index
+	<< " target: " << (int)type.target
+	<< '\n';
+}
+
+void Animator::ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data)
+{
+	std::cout << "unhandled key (" << name << "): tag: " << (int)type.tag
+	<< " target: " << (int)type.target
+	<< " data:" << (int)data.data1 << " " << (int)data.data2
+	<< '\n';
+}
+
 }

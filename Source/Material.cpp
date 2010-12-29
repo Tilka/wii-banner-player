@@ -25,6 +25,9 @@ distribution.
 
 #include <gl/glew.h>
 
+namespace WiiBanner
+{
+
 Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 	: textures(txtrs)
 {
@@ -46,36 +49,37 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 
 		struct
 		{
-			u32 texture_ref : 4;
+			u32 texture_map : 4;
 			u32 texture_srt : 4;
-			u32 texture_coord : 4;
+			u32 texture_coord_gen : 4;
 			u32 tev_swap_mode : 1;
-			u32 ind_texture_srt : 2;
-			u32 ind_texture_order : 3;
+			u32 ind_srt : 2;
+			u32 ind_stage : 3;
 			u32 tev_stage : 5;
 			u32 alpha_compare : 1;
 			u32 blend_mode : 1;
 			u32 channel_control : 1;
-			u32 pad1 : 1;
+			u32 pad : 1;
 			u32 material_color : 1;
 			u32 pad2 : 4;
 		};
+
 	} flags;
 
 	file >> BE >> flags.value;
 
 	//std::cout << "flags: " << flags.value << '\n';
 
-	// TextureRef
-	for (u32 i = 0; i != flags.texture_ref; ++i)
+	// texture map
+	for (u32 i = 0; i != flags.texture_map; ++i)
 	{
-		TextureRef ref;
+		TextureMap ref;
 		file >> BE >> ref.tex_index >> ref.wrap_s >> ref.wrap_t;
 
-		texture_refs.push_back(ref);
+		texture_maps.push_back(ref);
 	}
 
-	// TextureSRT
+	// texture srt
 	for (u32 i = 0; i != flags.texture_srt; ++i)
 	{
 		texture_srts.push_back(TextureSrt());
@@ -96,8 +100,8 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 	//	srt.scale.x = srt.scale.y = srt.translate.x = srt.translate.y = 1.f;
 	//}
 
-	// CoordGen
-	for (u32 i = 0; i != flags.texture_coord; ++i)
+	// texture coord gen
+	for (u32 i = 0; i != flags.texture_coord_gen; ++i)
 	{
 		texture_coord_gens.push_back(TextureCoordGen());
 		auto& coord = texture_coord_gens.back();
@@ -115,7 +119,7 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 	//	coord.mtrx_src = 30;
 	//}
 
-	// ChanControl
+	// channel control
 	if (flags.channel_control)
 	{
 		u8 color_matsrc, alpha_matsrc;
@@ -137,7 +141,7 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 		//std::cout << "color_matsrc: " << (int)color_matsrc << " alpha_matsrc: " << (int)alpha_matsrc << '\n';
 	}
 
-	// MaterialColor
+	// material color
 	if (flags.material_color)
 	{
 		ReadBEArray(file, color, 4);
@@ -151,10 +155,10 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 		memset(color, 255, 4);
 	}
 
-	// TevSwapModeTable
+	// tev swap table
 	if (flags.tev_swap_mode)
 	{
-		ReadBEArray(file, tev_swap_mode_table, 4);
+		ReadBEArray(file, tev_swap_mode, 4);
 
 		//std::cout << "TevSwapModeTable:\n";
 		//for (unsigned int i = 0; i != 4; ++i)
@@ -163,9 +167,13 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 		//		<< " blue: " << (int)tev_swap_mode_table[i].blue
 		//		<< " alpha: " << (int)tev_swap_mode_table[i].alpha << '\n';
 	}
+	else
+	{
+		// TODO:
+	}
 
-	// IndTextureSRT
-	for (u32 i = 0; i != flags.ind_texture_srt; ++i)
+	// ind srt
+	for (u32 i = 0; i != flags.ind_srt; ++i)
 	{
 		// TODO: read des guys
 		//file >> BE >> translate.x >> translate.y >> rotate >> scale.x >> scale.y;
@@ -175,8 +183,8 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 		//std::cout << "ind_texture: SRT\n";
 	}
 
-	// IndTextureOrder
-	for (u32 i = 0; i != flags.ind_texture_order; ++i)
+	// ind stage
+	for (u32 i = 0; i != flags.ind_stage; ++i)
 	{
 		// TODO: store these
 		u8 tex_coord, tex_map, scale_s, scale_t;
@@ -190,7 +198,7 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 		//std::cin.get();
 	}
 
-	// TevStage
+	// tev stage
 	for (u32 i = 0; i != flags.tev_stage; ++i)
 	{
 		tev_stages.push_back(TevStage());
@@ -241,7 +249,7 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 	}
 
 	// TODO:
-	// AlphaCompare
+	// alpha compare
 	if (flags.alpha_compare)
 	{
 		file >> BE >> alpha_compare.function >> alpha_compare.aop
@@ -261,7 +269,7 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 		//alpha_compare.aop = ;
 	}
 
-	// BlendMode
+	// blend mode
 	if (flags.blend_mode)
 	{
 		file >> BE >> blend_mode.type >> blend_mode.src_factor >> blend_mode.dst_factor >> blend_mode.logical_op;
@@ -297,7 +305,7 @@ void Material::Apply() const
 	// bind textures
 	{
 	unsigned int i = 0;
-	ForEach(texture_refs, [&](const TextureRef& tr)
+	ForEach(texture_maps, [&](const TextureMap& tr)
 	{
 		if (tr.tex_index < textures.size())
 		{
@@ -375,71 +383,70 @@ void Material::Apply() const
 	// enable correct number of tev stages
 	GX_SetNumTevStages(i);
 	}
-
-	// testing
-	//GX_SetNumTevStages(1);
-
-	//glBlendColor((float)color[0] / 255, (float)color[1] / 255, (float)color[2] / 255, (float)color[3] / 255);
 }
 
-bool Material::ProcessRLTS(u8 type, u8 index, float value)
+void Material::ProcessHermiteKey(const KeyType& type, float value)
 {
-	if (index < 5 && type < texture_srts.size())
+	if (type.tag == RLTS)	// texture scale/rotate/translate
 	{
-		auto& srt = texture_srts[type];
-
-		float* const values[] =
+		if (type.target < 5 && type.index < texture_srts.size())
 		{
-			&srt.translate.x,
-			&srt.translate.y,
+			auto& srt = texture_srts[type.index];
 
-			&srt.rotate,
+			float* const values[] =
+			{
+				&srt.translate.x,
+				&srt.translate.y,
 
-			&srt.scale.x,
-			&srt.scale.y,
-		};
+				&srt.rotate,
 
-		*values[index] = value;
+				&srt.scale.x,
+				&srt.scale.y,
+			};
+
+			*values[type.target] = value;
+		}
+	}
+	else if (type.tag == RLIM)	// ind texture crap
+	{
+
+	}
+	else if (type.tag == RLMC)	// material color
+	{
+		if (type.target < 4)
+		{
+			// color
+			color[type.target] = (u8)value;
+		}
+		else if (type.target < 0x10)
+		{
+			// initial color of tev color/output registers, often used for foreground/background
+			(&color_regs->r)[type.target - 4] = (u16)value;
+		}
+		else if (type.target < 0x20)
+		{
+			// tev color constants
+			color_constants[0][type.target - 0x10] = (u8)value;
+		}
 	}
 	else
-		return false;
-
-	return true;
+		Base::ProcessHermiteKey(type, value);
 }
 
-bool Material::ProcessRLMC(u8 index, u8 value)
+void Material::ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data)
 {
-	if (index < 4)
+	if (type.tag == RLTP)	// tpl palette
 	{
-		// color
-		color[index] = value;
-	}
-	else if (index < 0x10)
-	{
-		// initial color of tev color/output registers, often used for foreground/background
-		(&color_regs->r)[index - 4] = value;
-	}
-	else if (index < 0x20)
-	{
-		// tev color constants
-		color_constants[0][index - 0x10] = value;
+		// TODO: this aint no good
+
+		//if (target < texture_refs.size())
+		//{
+		//	texture_refs[target].tex_index = value;
+		//}
+		//else
 	}
 	else
-		return false;
-
-	return true;
+		Base::ProcessStepKey(type, data);
 }
 
-bool Material::ProcessRLTP(u8 index, u8 value)
-{
-	// TODO: this aint no good
-
-	//if (index < texture_refs.size())
-	//{
-	//	texture_refs[index].tex_index = value;
-	//}
-	//else
-		return false;
-
-	return true;
 }

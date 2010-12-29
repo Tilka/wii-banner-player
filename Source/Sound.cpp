@@ -27,6 +27,9 @@ distribution.
 #include "Types.h"
 #include "LZ77.h"
 
+namespace WiiBanner
+{
+
 struct BNS
 {
 	struct BNSHeader
@@ -313,4 +316,6 @@ bool BannerStream::OnGetData(sf::SoundStream::Chunk& chunk)
 	}
 
 	return true;
+}
+
 }
