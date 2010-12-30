@@ -52,7 +52,7 @@ public:
 	void Render(u8 render_alpha) const;
 	void SetFrame(FrameNumber frame);
 
-	std::vector<Pane*> panes;	// TODO: rename children or something?
+	std::vector<Pane*> panes;
 
 	float width, height;
 

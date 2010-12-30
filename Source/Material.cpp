@@ -336,16 +336,12 @@ void Material::Apply() const
 		{
 			const auto& srt = texture_srts[mtrx];
 
-			// why must i do this 0.5 hackery?
 			glTranslatef(0.5f, 0.5f, 0.f);
 			glRotatef(srt.rotate, 0.f, 0.f, 1.f);
-			//glTranslatef(-0.5f, -0.5f, 0.f);
 
-			glTranslatef(srt.translate.x, srt.translate.y, 0.f);
-
-			//glTranslatef(0.5f, 0.5f, 0.f);
 			glScalef(srt.scale.x, srt.scale.y, 1.f);
-			glTranslatef(-0.5f * std::abs(srt.scale.x), -0.5f * std::abs(srt.scale.y), 0.f);
+
+			glTranslatef(srt.translate.x / srt.scale.x - 0.5f, srt.translate.y / srt.scale.y -0.5f, 0.f);
 		}
 
 		++i;

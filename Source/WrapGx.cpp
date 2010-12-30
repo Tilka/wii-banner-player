@@ -38,12 +38,6 @@ distribution.
 
 static u8 g_texture_decode_buffer[512 * 512 * 4];
 
-#define USE_GLSL	1
-#define USE_TEXENV	2
-
-#define TEV_EMULATION		USE_GLSL
-//#define TEV_EMULATION		USE_TEXENV
-
 static float g_color_registers[3][4];
 
 static const GLuint g_texmap_start_index = 1;
@@ -295,8 +289,6 @@ void 	GX_SetAlphaCompare (u8 comp0, u8 ref0, u8 aop, u8 comp1, u8 ref1)
 	//glLogicOp();	// TODO: need to do this guy, but for alpha
 }
 
-#if TEV_EMULATION == USE_GLSL
-
 struct TevStageProps
 {
 	TevStageProps()
@@ -317,6 +309,10 @@ struct TevStageProps
 
 	u8 alpha_c : 4;
 	u8 alpha_d : 4;
+
+	// tevops
+	u8 color_op : 4;
+	u8 alpha_op : 4;
 
 	// outputs
 	u8 color_regid : 1;
@@ -423,8 +419,8 @@ void CompiledTevStages::Compile(const TevStages& stages)
 	frag_ss << "void main(){";
 
 	// previous stage color
-	//frag_ss << "vec4 color_previous = vec4(1.0)" ";";
-	frag_ss << "vec4 color_previous = texture2D(texture_fb, position_fb);";
+	frag_ss << "vec4 color_previous = vec4(0.0)" ";";
+	//frag_ss << "vec4 color_previous = texture2D(texture_fb, position_fb);";
 	// current stage texture color
 	frag_ss << "vec4 color_texture" ";";
 	// color/output registers
@@ -500,15 +496,28 @@ void CompiledTevStages::Compile(const TevStages& stages)
 			<< color_inputs[stage.color_d] << ','
 			<< alpha_inputs[stage.alpha_d] << ");";
 
-		// TODO: is color_previous always set, no matter the regid?
+		// TODO: is color_previous always set, no matter the regid? looks like no
 
-		// mix the inputs using interpolation/addition
-		// TODO: the "d" input is not always added, but it usually is
-		frag_ss << "vec4 color = mix(a, b, c) + d;";
+		// combine inputs using interpolation
+		frag_ss << "vec4 result = mix(a, b, c);";
+
+		auto const write_tevop = [&](u8 tevop, const char swiz[])
+		{
+			switch (tevop)
+			{
+			case 0:
+			case 1:
+				frag_ss << "result." << swiz << "= d." << swiz << (tevop ? '-' : '+') << " result." << swiz << ';';
+				break;
+			}
+		};
+
+		write_tevop(stage.color_op, "rgb");
+		write_tevop(stage.alpha_op, "a");
 
 		// output register
-		frag_ss << output_registers[stage.color_regid] << ".rgb = color" ".rgb;";
-		frag_ss << output_registers[stage.alpha_regid] << ".a = color" ".a;";
+		frag_ss << output_registers[stage.color_regid] << ".rgb = result" ".rgb;";
+		frag_ss << output_registers[stage.alpha_regid] << ".a = result" ".a;";
 
 		frag_ss << '}';
 
@@ -519,7 +528,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 
 	frag_ss << '}';
 
-	//std::cout << frag_ss.str() << '\n';
+	std::cout << frag_ss.str() << '\n';
 
 	// create/compile fragment shader
 	fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -586,10 +595,6 @@ void CompiledTevStages::Compile(const TevStages& stages)
 	//std::cin.get();
 }
 
-#endif
-
-#if TEV_EMULATION == USE_GLSL
-
 void 	GX_LoadTexObj (GXTexObj *obj, u8 mapid)
 {
 	const GLTexObj& txobj = *(GLTexObj*)obj;
@@ -598,49 +603,20 @@ void 	GX_LoadTexObj (GXTexObj *obj, u8 mapid)
 	glBindTexture(GL_TEXTURE_2D, txobj.tex);
 }
 
-#elif TEV_EMULATION == USE_TEXENV
-
-GLuint g_texture_slots[8] = {};
-
-void 	GX_LoadTexObj (GXTexObj *obj, u8 mapid)
-{
-	const GLTexObj& txobj = *(GLTexObj*)obj;
-
-	g_texture_slots[mapid & 0x7] = txobj.tex;
-}
-
-#endif
-
 inline void ActiveStage(u8 stage)
 {
-#if TEV_EMULATION == USE_GLSL
-	
 	g_active_stages.resize(std::max(g_active_stages.size(), (size_t)stage + 1));
-
-#elif TEV_EMULATION == USE_TEXENV
-
-	glActiveTexture(GL_TEXTURE0 + stage);
-
-#endif
 }
 
 void 	GX_SetTevOrder (u8 tevstage, u8 texcoord, u32 texmap, u8 color)
 {
 	ActiveStage(tevstage);
 
-#if TEV_EMULATION == USE_GLSL
-
-	g_active_stages[tevstage].texmap = texmap;
-	g_active_stages[tevstage].texcoord = texcoord;
+	TevStageProps& ts = g_active_stages[tevstage];
+	ts.texmap = texmap;
+	ts.texcoord = texcoord;
 
 	//glActiveTexture(GL_TEXTURE0 + g_texmap_start_index + tevstage);
-
-#elif TEV_EMULATION == USE_TEXENV
-
-	glBindTexture(GL_TEXTURE_2D, g_texture_slots[texmap & 7]);
-	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
-
-#endif
 }
 
 void 	GX_SetTevSwapMode (u8 tevstage, u8 ras_sel, u8 tex_sel)
@@ -662,15 +638,6 @@ void 	GX_SetTevColorS10 (u8 tev_regid, GXColorS10 color)
 		g_color_registers[tev_regid - 1][i] = (float)(&color.r)[i] / 255;
 }
 
-static const GLuint combine_ops[] =
-{
-	GL_ADD,
-	GL_DECAL,
-	GL_MODULATE,
-	GL_BLEND, // TODO: passclear
-	GL_REPLACE,
-};
-
 void 	GX_SetTevKAlphaSel (u8 tevstage, u8 sel)
 {
 	ActiveStage(tevstage);
@@ -685,177 +652,44 @@ void 	GX_SetTevAlphaIn (u8 tevstage, u8 a, u8 b, u8 c, u8 d)
 {
 	ActiveStage(tevstage);
 
-#if TEV_EMULATION == USE_GLSL
-
 	TevStageProps& ts = g_active_stages[tevstage];
 	ts.alpha_a = a & 0x7;
 	ts.alpha_b = b & 0x7;
 	ts.alpha_c = c & 0x7;
 	ts.alpha_d = d & 0x7;
-
-#elif TEV_EMULATION == USE_TEXENV
-
-	static const GLint combiner_inputs[] =
-	{
-		GL_PREVIOUS,
-		GL_PREVIOUS,	// TODO: color/output register 0
-		GL_PREVIOUS,	// TODO: color/output register 1
-		GL_PREVIOUS,	// TODO: color/output register 2
-		GL_TEXTURE,
-		GL_PRIMARY_COLOR,
-		GL_CONSTANT,
-		GL_ZERO,
-	};
-
-	//glColor4ub(0xff, 0xff, 0xff, 0xff);
-
-	if (0x7 != (a & b & c))
-	{
-		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_INTERPOLATE);
-
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_ALPHA, combiner_inputs[b & 0x7]);
-		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
-
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_ALPHA, combiner_inputs[a & 0x7]);
-		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
-
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE2_ALPHA, combiner_inputs[c & 0x7]);
-		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND2_ALPHA, GL_SRC_ALPHA);
-
-		// hax
-		//glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_REPLACE);
-		//glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_ALPHA, GL_PREVIOUS);
-		//glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_COLOR);
-		//glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_COLOR);
-		//glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND2_ALPHA, GL_SRC_COLOR);
-	}
-	else
-	{
-		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_REPLACE);
-
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_ALPHA, combiner_inputs[d & 0x7]);
-		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
-
-		//glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_ALPHA, GL_PREVIOUS);
-		//glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
-	}
-#endif
 }
 
 void 	GX_SetTevAlphaOp (u8 tevstage, u8 tevop, u8 tevbias, u8 tevscale, u8 clamp, u8 tevregid)
 {
 	ActiveStage(tevstage);
 
-#if TEV_EMULATION == USE_GLSL
-
 	TevStageProps& ts = g_active_stages[tevstage];
 	ts.alpha_regid = tevregid;
-
-#elif TEV_EMULATION == USE_TEXENV
-
-	//glTexEnvi(GL_TEXTURE_ENV, GL_ALPHA_SCALE, tevscale);
-
-	//glPixelTransferf(GL_ALPHA_BIAS, bias);
-	//glPixelTransferf(GL_ALPHA_SCALE, scale);
-
-#endif
+	ts.alpha_op = tevop;
 }
 
 void 	GX_SetTevColorIn (u8 tevstage, u8 a, u8 b, u8 c, u8 d)
 {
 	ActiveStage(tevstage);
 
-#if TEV_EMULATION == USE_GLSL
-
 	TevStageProps& ts = g_active_stages[tevstage];
 	ts.color_a = a & 0xf;
 	ts.color_b = b & 0xf;
 	ts.color_c = c & 0xf;
 	ts.color_d = d & 0xf;
-
-#elif TEV_EMULATION == USE_TEXENV
-
-	static const GLint combiner_inputs[] =
-	{
-		GL_PREVIOUS,
-		GL_PREVIOUS,
-		GL_ZERO,	// TODO: color/output register 0 RGB
-		GL_ZERO,	// TODO: color/output register 0 Alpha
-		GL_PRIMARY_COLOR,	// TODO: color/output register 1 RGB
-		GL_PRIMARY_COLOR,	// TODO: color/output register 1 Alpha
-		GL_PRIMARY_COLOR,	// TODO: color/output register 2 RGB
-		GL_PRIMARY_COLOR,	// TODO: color/output register 2 Alpha
-		GL_TEXTURE,
-		GL_TEXTURE,
-		GL_PRIMARY_COLOR,
-		GL_PRIMARY_COLOR,
-		GL_ZERO,	// ONE
-		GL_PRIMARY_COLOR,	// TODO: half
-		GL_CONSTANT,
-		GL_ZERO,
-	};
-
-	auto const get_operand = [](u8 input) -> GLint
-	{
-		if ((input < 12) && (input & 0x1))
-			return GL_SRC_ALPHA;
-		else if (12 == input)
-			return GL_ONE_MINUS_SRC_COLOR;
-		else
-			return GL_SRC_COLOR;
-	};
-
-	if (0xf != (a & b & c))
-	{
-		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_INTERPOLATE);
-
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_RGB, combiner_inputs[b & 0xf]);
-		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_RGB, get_operand(b));
-
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_RGB, combiner_inputs[a & 0xf]);
-		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_RGB, get_operand(a));
-		
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE2_RGB, combiner_inputs[c & 0xf]);
-		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND2_RGB, get_operand(c));
-	}
-	else
-	{
-		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_REPLACE);
-
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_RGB, combiner_inputs[d & 0xf]);
-		glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_RGB, get_operand(d));
-	}
-#endif
 }
 
 void 	GX_SetTevColorOp (u8 tevstage, u8 tevop, u8 tevbias, u8 tevscale, u8 clamp, u8 tevregid)
 {
 	ActiveStage(tevstage);
 
-#if TEV_EMULATION == USE_GLSL
-
 	TevStageProps& ts = g_active_stages[tevstage];
 	ts.color_regid = tevregid;
-
-#elif TEV_EMULATION == USE_TEXENV
-
-	//glTexEnvi(GL_TEXTURE_ENV, GL_RGB_SCALE, tevscale);
-
-	//glPixelTransferf(GL_RED_BIAS, bias);
-	//glPixelTransferf(GL_BLUE_BIAS, bias);
-	//glPixelTransferf(GL_GREEN_BIAS, bias);
-
-	//glPixelTransferf(GL_RED_SCALE, scale);
-	//glPixelTransferf(GL_BLUE_SCALE, scale);
-	//glPixelTransferf(GL_GREEN_SCALE, scale);
-
-#endif
+	ts.color_op = tevop;
 }
 
 void 	GX_SetNumTevStages (u8 num)
 {
-#if TEV_EMULATION == USE_GLSL
-
 	g_active_stages.resize(num);
 	CompiledTevStages& comptevs = g_compiled_tev_stages[g_active_stages];
 
@@ -871,28 +705,4 @@ void 	GX_SetNumTevStages (u8 num)
 	glBindTexture(GL_TEXTURE_2D, g_framebuffer_texture);
 	//glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, 608, 456, 0);
 	//std::cout << glGetError() << '\n';
-
-#elif TEV_EMULATION == USE_TEXENV
-
-	static u8 current_num = 0;
-
-	// enable stages
-	while (current_num < num)
-	{
-		ActiveStage(current_num);
-		glEnable(GL_TEXTURE_2D);
-
-		++current_num;
-	}
-
-	// disable stages
-	while (current_num > num)
-	{
-		--current_num;
-
-		ActiveStage(current_num);
-		glDisable(GL_TEXTURE_2D);
-	}
-
-#endif
 }
