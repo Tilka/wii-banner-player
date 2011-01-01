@@ -53,7 +53,7 @@ GXFifoObj * 	GX_Init (void *base, u32 size)
 	glBindTexture(GL_TEXTURE_2D, g_framebuffer_texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 608, 456, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
-	return NULL;
+	return nullptr;
 }
 
 struct GLTexObj
@@ -392,7 +392,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 	{
 	const auto& vert_src_str = vert_ss.str();
 	const GLchar* vert_src = vert_src_str.c_str();
-	glShaderSource(vertex_shader, 1, &vert_src, NULL);
+	glShaderSource(vertex_shader, 1, &vert_src, nullptr);
 	}
 
 	}	// done generating vertex shader
@@ -568,7 +568,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 	{
 	const auto& frag_src_str = frag_ss.str();
 	const GLchar* frag_src = frag_src_str.c_str();
-	glShaderSource(fragment_shader, 1, &frag_src, NULL);
+	glShaderSource(fragment_shader, 1, &frag_src, nullptr);
 	}
 
 	}	// done generating fragment shader
@@ -619,7 +619,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 	// print log
 	{
 	GLchar infolog[10240] = {};
-	glGetProgramInfoLog(program, 10240, NULL, infolog);
+	glGetProgramInfoLog(program, 10240, nullptr, infolog);
 	std::cout << infolog;
 	}
 

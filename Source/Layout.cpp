@@ -110,11 +110,11 @@ Layout::Layout(std::istream& file)
 	std::map<std::string, Pane*> pane_animator_map;
 	std::map<std::string, Material*> mate_animator_map;
 
-	Group* last_group = NULL;
+	Group* last_group = nullptr;
 	std::stack<std::map<std::string, Group>*> group_stack;
 	group_stack.push(&groups);
 
-	Pane* last_pane = NULL;
+	Pane* last_pane = nullptr;
 	std::stack<std::vector<Pane*>*> pane_stack;
 	pane_stack.push(&panes);
 

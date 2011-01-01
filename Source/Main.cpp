@@ -122,37 +122,17 @@ int main(int argc, char* argv[])
 
 	WiiBanner::Banner banner(fname);
 
-	window.SetSize(banner.GetBanner()->GetWidth(), banner.GetBanner()->GetHeight());
+	WiiBanner::Layout* const layout = banner.GetBanner();
+	//WiiBanner::Layout* const layout = banner.GetIcon();
 
-	//glViewport(0, 0, banner.GetWidth(), banner.GetHeight());
+	window.SetSize(layout->GetWidth(), layout->GetHeight());
+
+	//glViewport(0, 0, layout->GetWidth(), layout->GetHeight());
 
 	glMatrixMode(GL_MODELVIEW);
 
 	glEnable(GL_DEPTH_TEST);
-    //glDepthMask(GL_TRUE);
-
-	//glEnable(GL_COLOR_LOGIC_OP);
-	//glLogicOp(GL_COPY);
-
-	// testing
 	glDepthFunc(GL_ALWAYS);
-
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	//glBlendFunc(GL_ZERO, GL_ZERO);
-	//glBlendFunc(GL_ZERO, GL_SRC_ALPHA);
-
-	//glEnable(GL_TEXTURE_2D);
-	glShadeModel(GL_SMOOTH);	// whats this even do? :p
-
-	//GLint max_tev;
-	//glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_tev);
-	//std::cout << "max: " << max_tev << '\n';
-	//std::cin.get();
-
-	//GLfloat max_anis;
-	//glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &max_anis);
-	//glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, max_anis);
 
 	bool banner_play = true;
 	banner.sound.Play();
@@ -171,7 +151,7 @@ int main(int argc, char* argv[])
 			case sf::Event::Resized:
 				{
 					const float
-						banner_aspect = (float)banner.GetBanner()->GetWidth() / (float)banner.GetBanner()->GetHeight(),
+						banner_aspect = layout->GetWidth() / layout->GetHeight(),
 						window_aspect = (float)ev.Size.Width / (float)ev.Size.Height;
 
 					if (banner_aspect > window_aspect)
@@ -204,19 +184,19 @@ int main(int argc, char* argv[])
 
 					// previous frame
 				case sf::Key::Left:
-					banner.GetBanner()->SetFrame(banner.GetBanner()->GetFrame()
+					layout->SetFrame(layout->GetFrame()
 						- (1 + 4 * window.GetInput().IsKeyDown(sf::Key::LShift)));
 					break;
 
 					// next frame
 				case sf::Key::Right:
-					banner.GetBanner()->SetFrame(banner.GetBanner()->GetFrame()
+					layout->SetFrame(layout->GetFrame()
 						+ (1 + 4 * window.GetInput().IsKeyDown(sf::Key::LShift)));
 					break;
 
 					// restart playback
 				case sf::Key::Back:
-					banner.GetBanner()->SetFrame(0);
+					layout->SetFrame(0);
 					banner.sound.Stop();
 					if (banner_play)
 						banner.sound.Play();
@@ -237,7 +217,7 @@ int main(int argc, char* argv[])
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glClearColor(0, 0, 0, 1);
 
-		banner.GetBanner()->Render();
+		layout->Render();
 
 		//glColor4f(1.f, 1.f, 1.f, 1.f);
 		//DrawBorder();
@@ -245,7 +225,7 @@ int main(int argc, char* argv[])
 		window.Display();
 
 		if (banner_play)
-			banner.GetBanner()->AdvanceFrame();
+			layout->AdvanceFrame();
 
 		// TODO: improve
 		sf::Sleep(1.f / 60.f);

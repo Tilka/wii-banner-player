@@ -43,7 +43,7 @@ Picture::Picture(std::istream& file, const std::vector<Material*>& materials)
 	}
 	else
 	{
-		material = NULL;
+		material = nullptr;
 		std::cout << "Material Index Out Of Range!!!\n";
 	}
 

@@ -55,9 +55,8 @@ public:
 	void SetLoopStart(FrameNumber loop_start) { frame_loop_start = loop_start; }
 	void SetLoopEnd(FrameNumber loop_end) { frame_loop_end = loop_end; }
 
-	// TODO: return floats maybe
-	u32 GetWidth() const { return (u32)width; }
-	u32 GetHeight() const { return (u32)height; }
+	float GetWidth() const { return width; }
+	float GetHeight() const { return height; }
 
 	void SetLanguage(const std::string& language);
 
