@@ -166,12 +166,33 @@ Banner::Banner(const std::string& filename)
 	: layout_banner(nullptr)
 	, layout_icon(nullptr)
 {
-	// load an opening.bnr file
-	// TODO: support 00000000.app file format
+	std::ifstream bnr_file(filename, std::ios::binary | std::ios::in);
 
-	std::ifstream opening_file(filename, std::ios::binary | std::ios::in);
-	opening_file.seekg(0x600);	// skip the header
-	DiscIO::CARCFile opening_arc(opening_file);
+	// opening.bnr  archives have 0x600 byte headers
+	// 00000000.app archives have 0x640 byte headers
+	size_t header_bytes = 0x600;
+
+	bnr_file.seekg(header_bytes, std::ios::cur);
+
+	// lets see if this is an opening.bnr
+	FourCC magic;
+	bnr_file >> magic;
+	if (magic != "Uª8-")
+	{
+		// lets see if it's a 00000000.app
+		bnr_file.seekg(60, std::ios::cur);
+		bnr_file >> magic;
+
+		if (magic != "Uª8-")
+			return;	// not a 00000000.app either
+
+		header_bytes = 0x640;
+	}
+
+	header_bytes += 32;	// the inner-files have bigger headers
+
+	bnr_file.seekg(-4, std::ios::cur);
+	DiscIO::CARCFile opening_arc(bnr_file);
 
 	const auto load_layout = [&](const std::string& name) -> Layout*
 	{
@@ -181,11 +202,10 @@ Banner::Banner(const std::string& filename)
 		if (0 == bin_offset)
 			return nullptr;
 
-		// seek past IMD5 header
-		opening_file.seekg(0x600 + bin_offset + 32, std::ios::beg);
+		bnr_file.seekg(header_bytes + bin_offset, std::ios::beg);
 
 		// LZ77 decompress .bin file
-		LZ77Decompressor decomp(opening_file);
+		LZ77Decompressor decomp(bnr_file);
 		std::istream& file = decomp.GetStream();
 
 		// load layout
@@ -261,9 +281,8 @@ Banner::Banner(const std::string& filename)
 	const auto sound_offset = opening_arc.GetFileOffset("meta/sound.bin");
 	std::cout << "sound.bin offset is: " << sound_offset << '\n';
 
-	// seek past IMD5 header
-	opening_file.seekg(0x600 + sound_offset + 32, std::ios::beg);
-	sound.Open(opening_file);
+	bnr_file.seekg(header_bytes + sound_offset, std::ios::beg);
+	sound.Open(bnr_file);
 }
 
 Banner::~Banner()
