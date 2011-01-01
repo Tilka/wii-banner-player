@@ -122,8 +122,7 @@ int main(int argc, char* argv[])
 
 	WiiBanner::Banner banner(fname);
 
-	WiiBanner::Layout* const layout = banner.GetBanner();
-	//WiiBanner::Layout* const layout = banner.GetIcon();
+	WiiBanner::Layout* layout = banner.GetBanner();
 
 	window.SetSize(layout->GetWidth(), layout->GetHeight());
 
@@ -180,7 +179,7 @@ int main(int argc, char* argv[])
 						banner.sound.Pause();
 					break;
 
-					// TODO make sound progress with frames
+					// TODO make sound progress with frames, meh
 
 					// previous frame
 				case sf::Key::Left:
@@ -206,6 +205,12 @@ int main(int argc, char* argv[])
 				case sf::Key::Escape:
 					banner.sound.Stop();
 					window.Close();
+					break;
+
+					// change layout
+				case sf::Key::Return:
+					layout = (layout == banner.GetBanner()) ? banner.GetIcon() : banner.GetBanner();
+					window.SetSize(layout->GetWidth(), layout->GetHeight());
 					break;
 				}
 				break;
