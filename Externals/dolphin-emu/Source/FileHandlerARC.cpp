@@ -105,7 +105,7 @@ CARCFile::IsInitialized()
 
 
 size_t
-CARCFile::GetFileSize(const std::string& _rFullPath)
+CARCFile::GetFileSize(const std::string& _rFullPath) const
 {
 	if (!m_Initialized)
 	{
@@ -123,7 +123,7 @@ CARCFile::GetFileSize(const std::string& _rFullPath)
 }
 
 
-size_t CARCFile::GetFileOffset(const std::string& _rFullPath)
+size_t CARCFile::GetFileOffset(const std::string& _rFullPath) const
 {
 	if (!m_Initialized)
 		return 0;

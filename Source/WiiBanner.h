@@ -31,11 +31,8 @@ distribution.
 
 #include "WrapGx.h"
 
-#include "Animator.h"
-#include "Material.h"
-#include "Pane.h"
+#include "Layout.h"
 #include "Picture.h"
-#include "Texture.h"
 #include "Sound.h"
 
 #include "Types.h"
@@ -43,33 +40,39 @@ distribution.
 namespace WiiBanner
 {
 
+template <typename F>
+void ReadOffsetList(std::istream& file, u32 count, std::streamoff origin, F func, std::streamoff pad = 0)
+{
+	std::streamoff next_offset = file.tellg();
+
+	while (count--)
+	{
+		file.seekg(next_offset, std::ios::beg);
+
+		u32 offset;
+		file >> BE >> offset;
+		file.seekg(pad, std::ios::cur);
+
+		next_offset = file.tellg();
+
+		file.seekg(origin + offset, std::ios::beg);
+		func();
+	}
+}
+
 class Banner
 {
 public:
 	Banner(const std::string& filename);
 	~Banner();
 
-	void SetFrame(FrameNumber frame);
-	void Render();
-
-	void AdvanceFrame();
-
-	u32 GetWidth() const { return (u32)width; }
-	u32 GetHeight() const { return (u32)height; }
-
-	FrameNumber frame_current;
+	Layout* GetBanner() { return layout_banner; }
+	Layout* GetIcon() { return layout_icon; }
 
 	BannerStream sound;
 
 private:
-	float width, height;
-	u8 centered;
-
-	std::vector<Pane*> panes;
-	std::vector<Material*> materials;
-	std::vector<Texture*> textures;
-
-	FrameNumber frame_loop_start, frame_loop_end;
+	Layout *layout_banner, *layout_icon;
 };
 
 }

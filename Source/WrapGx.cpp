@@ -173,6 +173,7 @@ void 	GX_InitTexObjWrapMode (GXTexObj *obj, u8 wrap_s, u8 wrap_t)
 {
 	GLTexObj& txobj = *(GLTexObj*)obj;
 
+	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, txobj.tex);
 
 	static const GLenum wraps[] =
@@ -191,6 +192,7 @@ void 	GX_InitTexObjFilterMode (GXTexObj *obj, u8 minfilt, u8 magfilt)
 {
 	GLTexObj& txobj = *(GLTexObj*)obj;
 
+	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, txobj.tex);
 
 	const GLint filters[] =
@@ -353,7 +355,7 @@ void CompiledTevStages::Enable()
 {
 	glUseProgram(program);
 
-	// TODO: cache these values
+	// TODO: cache value of GetUniformLocation
 	glUniform4fv(glGetUniformLocation(program, "registers"), 3, g_color_registers[0]);
 }
 
@@ -393,7 +395,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 	glShaderSource(vertex_shader, 1, &vert_src, NULL);
 	}
 
-	}	// done generating verex shader
+	}	// done generating vertex shader
 
 	glCompileShader(vertex_shader);
 
@@ -402,13 +404,10 @@ void CompiledTevStages::Compile(const TevStages& stages)
 	std::ostringstream frag_ss;
 
 	// uniforms
-	// textures
 	for (unsigned int i = 0; i != sampler_count; ++i)
 		frag_ss << "uniform sampler2D textures" << i << ';';
 	frag_ss << "uniform sampler2D texture_fb" ";";
-	// color/output registers
 	frag_ss << "uniform vec4 registers[3]" ";";
-	// const color
 	frag_ss << "uniform vec4 color_constant" ";";
 
 	// these come from the vertex shader
@@ -418,12 +417,10 @@ void CompiledTevStages::Compile(const TevStages& stages)
 
 	frag_ss << "void main(){";
 
-	// previous stage color
-	frag_ss << "vec4 color_previous = vec4(0.0)" ";";
+	frag_ss << "vec4 color_previous" ";";
+	//frag_ss << "vec4 color_previous = vec4(0.0)" ";";
 	//frag_ss << "vec4 color_previous = texture2D(texture_fb, position_fb);";
-	// current stage texture color
 	frag_ss << "vec4 color_texture" ";";
-	// color/output registers
 	for (unsigned int i = 0; i != 3; ++i)
 		frag_ss << "vec4 color_registers" << i << " = registers[" << i << "]" ";";
 
@@ -467,6 +464,8 @@ void CompiledTevStages::Compile(const TevStages& stages)
 		"color_registers" "2",
 	};
 
+	frag_ss << "const vec3 comp16 = vec3(1.0, 255.0, 0.0), comp24 = vec3(1.0, 255.0, 255.0 * 255.0);";
+
 	//unsigned int i = 0;
 	ForEach(stages, [&](const TevStageProps& stage)
 	{
@@ -479,7 +478,6 @@ void CompiledTevStages::Compile(const TevStages& stages)
 		frag_ss << '{';
 
 		// all 4 inputs
-		// TODO: stick these directly in the mix() function
 		frag_ss << "vec4 a = vec4("
 			<< color_inputs[stage.color_a] << ','
 			<< alpha_inputs[stage.alpha_a] << ");";
@@ -496,24 +494,58 @@ void CompiledTevStages::Compile(const TevStages& stages)
 			<< color_inputs[stage.color_d] << ','
 			<< alpha_inputs[stage.alpha_d] << ");";
 
-		// TODO: is color_previous always set, no matter the regid? looks like no
-
-		// combine inputs using interpolation
-		frag_ss << "vec4 result = mix(a, b, c);";
-
 		auto const write_tevop = [&](u8 tevop, const char swiz[])
 		{
+			std::string condition_end(" ? c : vec4(0.0))");
+			condition_end += swiz;
+
+			// d is added with every op except SUB
+			frag_ss << "result" << swiz << " = d" << swiz << ((1 == tevop) ? '-' : '+');
+
+			const char* const compare_op = (tevop & 1) ? "==" : ">";
+
 			switch (tevop)
 			{
-			case 0:
-			case 1:
-				frag_ss << "result." << swiz << "= d." << swiz << (tevop ? '-' : '+') << " result." << swiz << ';';
+			case 0: // ADD
+			case 1: // SUB
+				frag_ss << "mix(a" << swiz << ", b" << swiz << ", c" << swiz << ")";
+				break;
+
+			case 8: // COMP_R8_GT
+			case 9: // COMP_R8_EQ
+				frag_ss << "((a.r " << compare_op << " b.r)" << condition_end;
+				break;
+
+			case 10: // COMP_GR16_GT
+			case 11: // COMP_GR16_EQ
+				frag_ss << "((dot(a.rgb, comp16) " << compare_op << " dot(b.rgb, comp16))" << condition_end;
+				break;
+
+			case 12: // COMP_BGR24_GT
+			case 13: // COMP_BGR24_EQ
+				frag_ss << "((dot(a.rgb, comp24) " << compare_op << " dot(b.rgb, comp24))" << condition_end;
+				break;
+
+			// TODO:
+
+			//case 14: // COMP_RGB8_GT
+			//case 15: // COMP_RGB8_EQ
+			//	break;
+			
+			default:
+				frag_ss << "(vec4(0.0))" << swiz;
+				std::cout << "Unsupported tevop!! " << (int)tevop << '\n';
 				break;
 			}
+
+			frag_ss << ';';
 		};
 
-		write_tevop(stage.color_op, "rgb");
-		write_tevop(stage.alpha_op, "a");
+		// TODO: could eliminate this result variable
+		frag_ss << "vec4 result;";
+
+		write_tevop(stage.color_op, ".rgb");
+		write_tevop(stage.alpha_op, ".a");
 
 		// output register
 		frag_ss << output_registers[stage.color_regid] << ".rgb = result" ".rgb;";
@@ -528,7 +560,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 
 	frag_ss << '}';
 
-	std::cout << frag_ss.str() << '\n';
+	//std::cout << frag_ss.str() << '\n';
 
 	// create/compile fragment shader
 	fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);

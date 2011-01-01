@@ -61,12 +61,10 @@ struct KeyType
 	const u8 index, target;
 };
 
-class Animator;
-
 class StepKeyHandler
 {
 public:
-	void Load(std::istream& file, u16 count);
+	void Load(std::istream& file, u16 count, FrameNumber frame_offset);
 
 	union KeyData
 	{
@@ -79,10 +77,6 @@ public:
 	};
 
 	KeyData GetFrame(FrameNumber frame_number) const;
-	void CopyFrames(const StepKeyHandler& kf, FrameNumber frame_offset);
-
-private:
-	void Process(FrameNumber frame, Animator& animator) const;
 
 	std::map<FrameNumber, KeyData> keys;
 };
@@ -90,7 +84,7 @@ private:
 class HermiteKeyHandler
 {
 public:
-	void Load(std::istream& file, u16 count);
+	void Load(std::istream& file, u16 count, FrameNumber frame_offset);
 
 	struct KeyData
 	{
@@ -98,10 +92,6 @@ public:
 	};
 
 	float GetFrame(FrameNumber frame_number) const;
-	void CopyFrames(const HermiteKeyHandler& kf, FrameNumber frame_offset);
-
-private:
-	void Process(FrameNumber frame, Animator& animator) const;
 
 	std::multimap<FrameNumber, KeyData> keys;
 };
@@ -111,9 +101,9 @@ class Animator
 public:
 	virtual ~Animator() {}
 
-	virtual void SetFrame(FrameNumber frame);
+	void LoadKeyFrames(std::istream& file, u8 tag_count, std::streamoff origin, FrameNumber frame_offset);
 
-	void CopyFrames(Animator& rhs, FrameNumber frame_offset);
+	virtual void SetFrame(FrameNumber frame);
 
 //protected:
 	std::string name;

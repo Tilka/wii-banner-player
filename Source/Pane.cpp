@@ -106,6 +106,22 @@ void Pane::Render(u8 render_alpha) const
 	glPopMatrix();
 }
 
+Pane* Pane::FindPane(const std::string& find_name)
+{
+	if (find_name == name)
+		return this;
+
+	Pane* found = nullptr;
+
+	ForEach(panes, [&](Pane* pane)
+	{
+		if (!found)
+			found = pane->FindPane(find_name);	// TODO: oh noes, can't break out of this lambda loop
+	});
+
+	return found;
+}
+
 void Pane::ProcessHermiteKey(const KeyType& type, float value)
 {
 	if (type.tag == RLVC)	// vertex color

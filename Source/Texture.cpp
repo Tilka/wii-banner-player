@@ -30,7 +30,7 @@ namespace WiiBanner
 
 static char g_texture_read_buffer[512 * 512 * 4];
 
-Texture::Texture(std::istream& file)
+void Texture::Load(std::istream& file)
 {
 	const std::streamoff file_start = file.tellg();
 
@@ -59,15 +59,37 @@ Texture::Texture(std::istream& file)
 	{
 		file.seekg(next_offset, std::ios::beg);
 
-		u32 header_offset;
-		u32 palette_offset; // (0 if no palette)
+		// header offsets
+		u32 texture_offset;
+		u32 palette_offset; // 0 if no palette
 
-		file >> BE >> header_offset >> palette_offset;
+		file >> BE >> texture_offset >> palette_offset;
 
 		next_offset = file.tellg();
 
-		// seek to the texture header
-		file.seekg(file_start + header_offset, std::ios::beg);
+		// seek to/read palette header
+		if (palette_offset)
+		{
+			file.seekg(file_start + palette_offset, std::ios::beg);
+
+			u16 palette_count;
+			u32 palette_format;
+			u16 palette_size;
+			u16 palette_data_offset;
+
+			file >> BE >> palette_count >> palette_size
+				>> palette_format >> palette_data_offset;
+
+			// TODO: complete palete stuffs
+			std::cout << "palette_offset != 0 is not supported!! (count: "
+				<< palette_count << " format: "<< palette_format << " size: " << palette_size << ")\n";
+
+			// seek to palette data
+			file.seekg(file_start + palette_data_offset, std::ios::beg);
+		}
+
+		// seek to texture header
+		file.seekg(file_start + texture_offset, std::ios::beg);
 
 		// read texture header
 		u32 format;
@@ -85,23 +107,6 @@ Texture::Texture(std::istream& file)
 		file >> BE >> height >> width >> format >> texture_data_offset
 			>> wrap_s >> wrap_t >> min_filter >> mag_filter
 			>> lod_bias >> edge_lod >> min_lod >> max_lod >> unpacked;
-
-		// seek to/read palette header
-		if (palette_offset)
-		{
-			file.seekg(file_start + palette_offset, std::ios::beg);
-
-			u16 palette_count;
-			u32 palette_format;
-			u16 palette_data_offset;
-
-			file >> BE >> palette_count;
-			file.ignore(2);
-			file >> BE >> palette_format >> palette_data_offset;
-
-			// TODO: complete palete stuffs
-			std::cout << "palette_offset != 0 is not supported!!\n";
-		}
 
 		// seek to texture data
 		file.seekg(file_start + texture_data_offset, std::ios::beg);

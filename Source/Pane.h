@@ -52,11 +52,16 @@ public:
 	void Render(u8 render_alpha) const;
 	void SetFrame(FrameNumber frame);
 
+	void SetHide(bool _hide) { hide = _hide; }
+	Pane* FindPane(const std::string& name);
+
 	std::vector<Pane*> panes;
 
-	float width, height;
+protected:
+	void ProcessHermiteKey(const KeyType& type, float value);
+	void ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data);
 
-	bool hide;	// used by the groups
+	float width, height;
 	u8 origin;
 
 private:
@@ -64,6 +69,7 @@ private:
 
 	u8 visible;
 	u8 alpha;
+	bool hide;	// used by the groups
 
 	struct
 	{
@@ -74,10 +80,6 @@ private:
 	{
 		float x, y;
 	} scale;
-
-protected:
-	void ProcessHermiteKey(const KeyType& type, float value);
-	void ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data);
 };
 
 }

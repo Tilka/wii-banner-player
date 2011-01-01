@@ -122,7 +122,7 @@ int main(int argc, char* argv[])
 
 	WiiBanner::Banner banner(fname);
 
-	window.SetSize(banner.GetWidth(), banner.GetHeight());
+	window.SetSize(banner.GetBanner()->GetWidth(), banner.GetBanner()->GetHeight());
 
 	//glViewport(0, 0, banner.GetWidth(), banner.GetHeight());
 
@@ -171,7 +171,7 @@ int main(int argc, char* argv[])
 			case sf::Event::Resized:
 				{
 					const float
-						banner_aspect = (float)banner.GetWidth() / (float)banner.GetHeight(),
+						banner_aspect = (float)banner.GetBanner()->GetWidth() / (float)banner.GetBanner()->GetHeight(),
 						window_aspect = (float)ev.Size.Width / (float)ev.Size.Height;
 
 					if (banner_aspect > window_aspect)
@@ -204,17 +204,19 @@ int main(int argc, char* argv[])
 
 					// previous frame
 				case sf::Key::Left:
-					banner.frame_current -= 1 + 4 * window.GetInput().IsKeyDown(sf::Key::LShift);
+					banner.GetBanner()->SetFrame(banner.GetBanner()->GetFrame()
+						- (1 + 4 * window.GetInput().IsKeyDown(sf::Key::LShift)));
 					break;
 
 					// next frame
 				case sf::Key::Right:
-					banner.frame_current += 1 + 4 * window.GetInput().IsKeyDown(sf::Key::LShift);
+					banner.GetBanner()->SetFrame(banner.GetBanner()->GetFrame()
+						+ (1 + 4 * window.GetInput().IsKeyDown(sf::Key::LShift)));
 					break;
 
 					// restart playback
 				case sf::Key::Back:
-					banner.frame_current = 0;
+					banner.GetBanner()->SetFrame(0);
 					banner.sound.Stop();
 					if (banner_play)
 						banner.sound.Play();
@@ -235,18 +237,15 @@ int main(int argc, char* argv[])
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glClearColor(0, 0, 0, 1);
 
-		if (!banner_play)
-			banner.SetFrame(banner.frame_current);
-
-		banner.Render();
+		banner.GetBanner()->Render();
 
 		//glColor4f(1.f, 1.f, 1.f, 1.f);
 		//DrawBorder();
 
-		if (banner_play)
-			banner.AdvanceFrame();
-
 		window.Display();
+
+		if (banner_play)
+			banner.GetBanner()->AdvanceFrame();
 
 		// TODO: improve
 		sf::Sleep(1.f / 60.f);

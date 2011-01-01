@@ -39,8 +39,8 @@ class CARCFile
 
 		bool IsInitialized();
 
-		size_t GetFileSize(const std::string& _rFullPath);
-		size_t GetFileOffset(const std::string& _rFullPath);
+		size_t GetFileSize(const std::string& _rFullPath) const;
+		size_t GetFileOffset(const std::string& _rFullPath) const;
 
 		size_t ReadFile(const std::string& _rFullPath, u8* _pBuffer, size_t _MaxBufferSize);
 

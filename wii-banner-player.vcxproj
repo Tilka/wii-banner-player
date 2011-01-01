@@ -138,6 +138,7 @@
   <ItemGroup>
     <ClCompile Include="Source\Animator.cpp" />
     <ClCompile Include="Source\Endian.cpp" />
+    <ClCompile Include="Source\Layout.cpp" />
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Material.cpp" />
     <ClCompile Include="Source\Pane.cpp" />
@@ -149,6 +150,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Animator.h" />
+    <ClInclude Include="Source\Layout.h" />
     <ClInclude Include="Source\LZ77.h" />
     <ClInclude Include="Source\Material.h" />
     <ClInclude Include="Source\Pane.h" />

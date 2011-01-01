@@ -25,6 +25,7 @@ distribution.
 #define _TEXTURE_H_
 
 #include <list>
+#include <string>
 #include <vector>
 
 #include "Types.h"
@@ -37,9 +38,12 @@ namespace WiiBanner
 class Texture
 {
 public:
-	Texture(std::istream& file);
+	Texture(const std::string& _name) : name(_name) {}
+	void Load(std::istream& file);
 
 	GXTexObj texobj;
+
+	std::string name;
 };
 
 }

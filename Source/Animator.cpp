@@ -23,8 +23,79 @@ distribution.
 
 #include "Animator.h"
 
+#include "WiiBanner.h"	// for ReadOffsetList
+
 namespace WiiBanner
 {
+
+void Animator::LoadKeyFrames(std::istream& file, u8 tag_count, std::streamoff origin, FrameNumber frame_offset)
+{
+	ReadOffsetList(file, tag_count, origin, [&]()
+	{
+		const std::streamoff origin = file.tellg();
+
+		FourCC magic;
+		u8 entry_count;
+
+		file >> magic >> entry_count;
+		file.seekg(3, std::ios::cur);	// some padding
+
+		KeyFrameTag tag = (KeyFrameTag)-1;
+		if (magic == "RLPA")
+			tag = RLPA;
+		else if (magic == "RLTS")
+			tag = RLTS;
+		else if (magic == "RLVI")
+			tag = RLVI;
+		else if (magic == "RLVC")
+			tag = RLVC;
+		else if (magic == "RLMC")
+			tag = RLMC;
+		else if (magic == "RLTP")
+			tag = RLTP;
+		else if (magic == "RLIM")
+			tag = RLIM;
+		else
+		{
+			std::cout << "unknown frame tag: ";
+			std::cout.write((char*)magic.data, 4) << '\n';
+			//std::cin.get();
+		}
+
+		ReadOffsetList(file, entry_count, origin, [&]
+		{
+			u8 index;
+			u8 target;
+			u8 data_type;
+			u8 pad;
+			u16 frame_count;
+			u16 pad1;
+			u32 offset;
+
+			file >> BE >> index >> target >> data_type >> pad
+				>> frame_count >> pad1 >> offset;
+
+			const KeyType frame_type(tag, index, target);
+
+			switch (data_type)
+			{
+				// step key frame
+			case 0x01:
+				step_keys[frame_type].Load(file, frame_count, frame_offset);
+				break;
+
+				// hermite key frame
+			case 0x02:
+				hermite_keys[frame_type].Load(file, frame_count, frame_offset);
+				break;
+
+			default:
+				std::cout << "UNKNOWN FRAME DATA TYPE!!\n";
+				break;
+			}
+		});
+	});
+}
 
 void Animator::SetFrame(FrameNumber frame_number)
 {
@@ -45,14 +116,14 @@ void Animator::SetFrame(FrameNumber frame_number)
 	});
 }
 
-void StepKeyHandler::Load(std::istream& file, u16 count)
+void StepKeyHandler::Load(std::istream& file, u16 count, FrameNumber frame_offset)
 {
 	while (count--)
 	{
 		FrameNumber frame;
 		file >> BE >> frame;
 
-		auto& data = keys[frame];
+		auto& data = keys[frame + frame_offset];
 		file >> BE >> data.data1 >> data.data2;
 
 		file.seekg(2, std::ios::cur);
@@ -61,7 +132,7 @@ void StepKeyHandler::Load(std::istream& file, u16 count)
 	}
 }
 
-void HermiteKeyHandler::Load(std::istream& file, u16 count)
+void HermiteKeyHandler::Load(std::istream& file, u16 count, FrameNumber frame_offset)
 {
 	while (count--)
 	{
@@ -72,6 +143,8 @@ void HermiteKeyHandler::Load(std::istream& file, u16 count)
 
 		// read the value and slope
 		file >> BE >> pair.second.value >> pair.second.slope;
+
+		pair.first += frame_offset;
 
 		keys.insert(pair);
 
@@ -140,35 +213,6 @@ float HermiteKeyHandler::GetFrame(FrameNumber frame_number) const
 			prev->second.value * (1 + (2 * powf(t, 3) - 3 * powf(t, 2))) +
 			next->second.value * (-2 * powf(t, 3) + 3 * powf(t, 2));
 	}
-}
-
-void StepKeyHandler::CopyFrames(const StepKeyHandler& fh, FrameNumber frame_offset)
-{
-	ForEach(fh.keys, [=](const std::pair<const FrameNumber, const KeyData&> frame)
-	{
-		keys[frame.first + frame_offset] = frame.second;
-	});
-}
-
-void HermiteKeyHandler::CopyFrames(const HermiteKeyHandler& fh, FrameNumber frame_offset)
-{
-	ForEach(fh.keys, [=](const std::pair<const FrameNumber, const KeyData&> frame)
-	{
-		keys.insert(std::make_pair(frame.first + frame_offset, frame.second));
-	});
-}
-
-void Animator::CopyFrames(Animator& rhs, FrameNumber frame_offset)
-{
-	ForEach(rhs.hermite_keys, [=](const std::pair<const KeyType&, const HermiteKeyHandler&> kf)
-	{
-		hermite_keys[kf.first].CopyFrames(kf.second, frame_offset);
-	});
-
-	ForEach(rhs.step_keys, [=](const std::pair<const KeyType&, const StepKeyHandler&> kf)
-	{
-		step_keys[kf.first].CopyFrames(kf.second, frame_offset);
-	});
 }
 
 void Animator::ProcessHermiteKey(const KeyType& type, float value)
