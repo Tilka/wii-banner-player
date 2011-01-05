@@ -31,7 +31,7 @@ namespace WiiBanner
 Pane::Pane(std::istream& file)
 	: hide(false)
 {
-	file >> BE >> visible >> origin >> alpha;	// TODO: does a pane's alpha affect its children?
+	file >> BE >> flags >> origin >> alpha;	// TODO: does a pane's alpha affect its children?
 	file.seekg(1, std::ios::cur);
 
 	{
@@ -73,18 +73,22 @@ void Pane::SetFrame(FrameNumber frame)
 	});
 }
 
-void Pane::Render(u8 render_alpha) const
+void Pane::Render(u8 parent_alpha, float adjust_x, float adjust_y) const
 {
-	if (!visible || hide)
+	if (!GetVisible() || hide)
 		return;
 
-	// multiply with own alpha
-	render_alpha = MultiplyColors(render_alpha, alpha);
+	const u8 render_alpha = GetInfluencedAlpha() ? MultiplyColors(parent_alpha, alpha) : alpha;
 
 	glPushMatrix();
 
 	// position
-	glTranslatef(translate.x, translate.y, translate.z);
+	if (!GetPositionAdjust())
+	{
+		adjust_x = 1.f;
+		adjust_y = 1.f;
+	}
+	glTranslatef(translate.x * adjust_x, translate.y * adjust_y, translate.z);
 
 	// rotate
 	glRotatef(rotate.x, 1.f, 0.f, 0.f);
@@ -100,7 +104,7 @@ void Pane::Render(u8 render_alpha) const
 	// render children
 	ForEach(panes, [=](const Pane* pane)
 	{
-		pane->Render(render_alpha);
+		pane->Render(render_alpha, adjust_x, adjust_y);
 	});
 
 	glPopMatrix();
@@ -166,7 +170,7 @@ void Pane::ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data)
 {
 	if (type.tag == RLVI)	// visibility
 	{
-		visible = data.data2;
+		SetVisible(!!data.data2);
 		return;
 	}
 	

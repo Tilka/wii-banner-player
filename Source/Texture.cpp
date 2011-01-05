@@ -28,6 +28,7 @@ distribution.
 namespace WiiBanner
 {
 
+static char g_tlut_read_buffer[16 * 1024];
 static char g_texture_read_buffer[512 * 512 * 4];
 
 void Texture::Load(std::istream& file)
@@ -49,8 +50,8 @@ void Texture::Load(std::istream& file)
 	{
 		texture_count = 1;
 
-		//std::cout << "count > 1\n";
-		//std::cin.get();
+		std::cout << "texture count > 1\n";
+		std::cin.get();
 	}
 
 	// read texture offsets
@@ -73,19 +74,27 @@ void Texture::Load(std::istream& file)
 			file.seekg(file_start + palette_offset, std::ios::beg);
 
 			u16 palette_count;
-			u32 palette_format;
 			u16 palette_size;
+			u32 palette_format;
 			u16 palette_data_offset;
 
 			file >> BE >> palette_count >> palette_size
 				>> palette_format >> palette_data_offset;
 
-			// TODO: complete palete stuffs
-			std::cout << "palette_offset != 0 is not supported!! (count: "
+			std::cout << "palette_offset != 0 (count: "
 				<< palette_count << " format: "<< palette_format << " size: " << palette_size << ")\n";
 
-			// seek to palette data
+			// TODO: check if > sizeof(g_tlut_read_buffer)
+
+			// seek to/read palette data
 			file.seekg(file_start + palette_data_offset, std::ios::beg);
+			file.read(g_tlut_read_buffer, palette_count * 2);
+
+			// load tlut
+			GXTlutObj tlutobj;
+			GX_InitTlutObj(&tlutobj, g_tlut_read_buffer, palette_format, palette_count);
+			GX_LoadTlut(&tlutobj, 0);
+			GX_InitTexObjTlut(&texobj, 0);
 		}
 
 		// seek to texture header

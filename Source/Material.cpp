@@ -73,10 +73,10 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 	// texture map
 	for (u32 i = 0; i != flags.texture_map; ++i)
 	{
-		TextureMap ref;
-		file >> BE >> ref.tex_index >> ref.wrap_s >> ref.wrap_t;
+		TextureMap map;
+		file >> BE >> map.tex_index >> map.wrap_s >> map.wrap_t;
 
-		texture_maps.push_back(ref);
+		texture_maps.push_back(map);
 	}
 
 	// texture srt
@@ -439,14 +439,15 @@ void Material::ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data)
 	{
 		// TODO: this aint no good
 
-		//if (target < texture_refs.size())
+		//if (type.target < texture_maps.size())
 		//{
-		//	texture_refs[target].tex_index = value;
+		//	texture_maps[type.target].tex_index = data.data2;
+
+			return;
 		//}
-		//else
 	}
-	else
-		Base::ProcessStepKey(type, data);
+	
+	Base::ProcessStepKey(type, data);
 }
 
 }

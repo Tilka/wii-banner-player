@@ -23,6 +23,7 @@ distribution.
 
 #include "Layout.h"
 #include "Picture.h"
+#include "Textbox.h"
 
 #include <stack>
 
@@ -137,7 +138,7 @@ Layout::Layout(std::istream& file)
 		}
 		else if (header.magic == "txl1")
 		{
-			// load textures
+			// load texture list
 			u16 texture_count;
 			u16 offset;
 
@@ -145,19 +146,33 @@ Layout::Layout(std::istream& file)
 
 			ReadOffsetList(file, texture_count, file.tellg(), [&]
 			{
-				std::string texture_name;
-				std::getline(file, texture_name, '\0');
-
-				auto* const texture = new Texture(texture_name);
-
-				//file.seekg(archive.GetFileOffset("arc/timg/" + texture_name), std::ios::beg);
-				//texture->Load(file);
+				auto* const texture = new Texture;
+				std::getline(file, texture->name, '\0');
 
 				textures.push_back(texture);
 
 			}, 4);
 
 			std::cout << "Loaded " << textures.size() << " Textures\n";
+		}
+		else if (header.magic == "fnl1")
+		{
+			// load font list
+			u16 font_count;
+			u16 offset;
+
+			file >> BE >> font_count >> offset;
+
+			ReadOffsetList(file, font_count, file.tellg(), [&]
+			{
+				auto* const font = new Font;
+				std::getline(file, font->name, '\0');
+
+				fonts.push_back(font);
+
+			}, 4);
+
+			std::cout << "Loaded " << textures.size() << " Fonts\n";
 		}
 		else if (header.magic == "mat1")
 		{
@@ -228,6 +243,11 @@ Layout::Layout(std::istream& file)
 			if (group_stack.size() > 1)
 				group_stack.pop();
 		}
+		else if (header.magic == "txt1")
+		{
+			pane_stack.top()->push_back(last_pane = new Textbox(file));
+			pane_animator_map[last_pane->name] = last_pane;
+		}
 		else
 		{
 			std::cout << "UNKNOWN SECTION: ";
@@ -267,7 +287,7 @@ void Layout::Render() const
 	// usually there is only one root pane, probably always
 	ForEach(panes, [&](Pane* pane)
 	{
-		pane->Render(0xff);	// fully opaque
+		pane->Render(0xff, 1.f, 1.f);	// fully opaque
 	});
 }
 

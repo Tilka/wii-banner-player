@@ -38,6 +38,21 @@ inline u8 MultiplyColors(C1 c1, C2 c2)
 	return (u16)c1 * c2 / 0xff;
 }
 
+template <typename B, typename N>
+void SetBit(B& flags, N bit, bool state)
+{
+	if (state)
+		flags |= (1 << bit);
+	else
+		flags &= ~(1 << bit);
+}
+
+template <typename B, typename N>
+bool GetBit(const B& flags, N bit)
+{
+	return !!(flags & (1 << bit));
+}
+
 namespace WiiBanner
 {
 
@@ -49,10 +64,21 @@ public:
 	Pane(std::istream& file);
 	virtual ~Pane();
 
-	void Render(u8 render_alpha) const;
+	void Render(u8 parent_alpha, float adjust_x, float adjust_y) const;
 	void SetFrame(FrameNumber frame);
 
+	bool GetVisible() const { return GetBit(flags, FLAG_VISIBLE); }
+	void SetVisible(bool visible) { SetBit(flags, FLAG_VISIBLE, visible); }
+
+	bool GetInfluencedAlpha() const { return !GetBit(flags, FLAG_INFLUENCED_ALPHA); }
+	void SetInfluencedAlpha(bool influenced) { SetBit(flags, FLAG_INFLUENCED_ALPHA, !influenced); }
+
+	bool GetPositionAdjust() const { return GetBit(flags, FLAG_POSITION_ADJUST); }
+	void SetPositionAdjust(bool influenced) { SetBit(flags, FLAG_POSITION_ADJUST, influenced); }
+
+	bool GetHide() { return hide; }
 	void SetHide(bool _hide) { hide = _hide; }
+
 	Pane* FindPane(const std::string& name);
 
 	std::vector<Pane*> panes;
@@ -67,7 +93,14 @@ protected:
 private:
 	virtual void Draw(u8 render_alpha) const {};
 
-	u8 visible;
+	enum
+	{
+		FLAG_VISIBLE,
+		FLAG_INFLUENCED_ALPHA,
+		FLAG_POSITION_ADJUST
+	};
+
+	u8 flags;
 	u8 alpha;
 	bool hide;	// used by the groups
 

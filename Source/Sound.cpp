@@ -212,20 +212,12 @@ bool BannerStream::Open(std::istream& file)
 	BNS bns_file;
 	FourCC magic;
 	u32 file_len;
-	std::streamoff in_start = file.tellg();
-
-	file >> magic;
-
-	file.seekg(file.tellg() - std::streamoff(sizeof(magic)));
+	
 	LZ77Decompressor decomp(file);
-	
-	std::istream& in = (magic == "LZ77") ? decomp.GetStream() : file;
-	
-	if (magic == "LZ77")
-	{
-		in_start = in.tellg();
-		in >> magic;
-	}
+	std::istream& in = decomp.GetStream();
+
+	const std::streamoff in_start = in.tellg();
+	in >> magic;
 
 	if (magic == "RIFF")
 	{

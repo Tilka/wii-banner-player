@@ -35,7 +35,17 @@ distribution.
 // watev
 struct GXTexObj
 {
+	GXTexObj()
+	{
+		memset(val, 0, sizeof(val));
+	};
+
 	u32 	val [8];
+};
+
+struct GXTlutObj
+{
+	u32 val [8];	// TODO: fix this
 };
 
 struct GXColor
@@ -53,6 +63,10 @@ typedef void GXFifoObj;
 GXFifoObj * 	GX_Init (void *base, u32 size);
 
 u32 	GX_GetTexBufferSize (u16 wd, u16 ht, u32 fmt, u8 mipmap, u8 maxlod);
+
+void 	GX_InitTlutObj (GXTlutObj *obj, void *lut, u8 fmt, u16 entries);
+void 	GX_LoadTlut (GXTlutObj *obj, u32 tlut_name);
+void 	GX_InitTexObjTlut (GXTexObj *obj, u32 tlut_name);
 
 void 	GX_InitTexObj (GXTexObj *obj, void *img_ptr, u16 wd, u16 ht, u8 fmt, u8 wrap_s, u8 wrap_t, u8 mipmap);
 void 	GX_InitTexObjWrapMode (GXTexObj *obj, u8 wrap_s, u8 wrap_t);

@@ -21,27 +21,17 @@ misrepresented as being the original software.
 distribution.
 */
 
-#ifndef _TEXTURE_H_
-#define _TEXTURE_H_
+#ifndef _FONT_H_
+#define _FONT_H_
 
-#include <list>
 #include <string>
-#include <vector>
-
-#include "Types.h"
-
-#include "WrapGx.h"
 
 namespace WiiBanner
 {
 
-class Texture
+class Font
 {
 public:
-	void Load(std::istream& file);
-
-	GXTexObj texobj;
-
 	std::string name;
 };
 

@@ -35,8 +35,18 @@ public:
 	{
 		const u32 TYPE_LZ77 = 1;
 
-		// skip LZ77 header
-		in.seekg(4, std::ios::cur);
+		char magic[4];
+		in.read(magic, 4);
+
+		if (memcmp(magic, "LZ77", 4))
+		{
+			// LZ77 header not present
+			in.seekg(-4, std::ios::cur);
+			ret_stream = &in;
+			return;
+		}
+
+		ret_stream = &data;
 
 		u32 hdr;
 		in.read((char*)&hdr, sizeof(hdr));
@@ -95,11 +105,12 @@ public:
 
 	std::istream& GetStream()
 	{
-		return data;
+		return *ret_stream;
 	}
 
 private:
 	std::stringstream data;
+	std::istream* ret_stream;
 };
 
 #endif

@@ -59,7 +59,7 @@ GXFifoObj * 	GX_Init (void *base, u32 size)
 struct GLTexObj
 {
 	GLuint tex;
-	//u16 width, height;
+	u8 tlutfmt;
 };
 
 // TODO: doesn't handle mipmap or maxlod
@@ -72,6 +72,42 @@ u32 	GX_GetTexBufferSize (u16 wd, u16 ht, u32 fmt, u8 mipmap, u8 maxlod)
 	const u32 expanded_height = (ht + bsh) & (~bsh);
 
 	return TexDecoder_GetTextureSizeInBytes(expanded_width, expanded_height, fmt);
+}
+
+// silly
+
+struct TlutObj
+{
+	void* lut;
+	u8 fmt;
+	u16 entries;
+};
+
+u8 g_tlut_names[1];
+
+void 	GX_InitTexObjTlut (GXTexObj *obj, u32 tlut_name)
+{
+	GLTexObj& txobj = *(GLTexObj*)obj;
+
+	txobj.tlutfmt = g_tlut_names[tlut_name];
+}
+
+void 	GX_InitTlutObj (GXTlutObj *obj, void *lut, u8 fmt, u16 entries)
+{
+	TlutObj& tlutobj = *(TlutObj*)obj;
+
+	tlutobj.lut = lut;
+	tlutobj.fmt = fmt;
+	tlutobj.entries = entries;
+}
+
+void 	GX_LoadTlut (GXTlutObj *obj, u32 tlut_name)
+{
+	TlutObj& tlutobj = *(TlutObj*)obj;
+
+	g_tlut_names[tlut_name] = tlutobj.fmt;
+
+	memcpy(texMem, tlutobj.lut, tlutobj.entries * 2);
 }
 
 void 	GX_InitTexObj (GXTexObj *obj, void *img_ptr, u16 wd, u16 ht, u8 fmt, u8 wrap_s, u8 wrap_t, u8 mipmap)
@@ -104,7 +140,7 @@ void 	GX_InitTexObj (GXTexObj *obj, void *img_ptr, u16 wd, u16 ht, u8 fmt, u8 wr
 
 	// decode texture
 	auto const pcfmt = TexDecoder_Decode(g_texture_decode_buffer,
-		(u8*)img_ptr, expanded_width, expanded_height, fmt, 0, 0);
+		(u8*)img_ptr, expanded_width, expanded_height, fmt, 0, txobj.tlutfmt);
 
 	// load texture
 	switch (pcfmt)

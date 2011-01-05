@@ -27,6 +27,7 @@ distribution.
 #include "Pane.h"
 #include "Material.h"
 #include "Texture.h"
+#include "Font.h"
 
 #include "Types.h"
 
@@ -73,6 +74,7 @@ public:
 	std::vector<Pane*> panes;
 	std::vector<Material*> materials;
 	std::vector<Texture*> textures;
+	std::vector<Font*> fonts;
 
 	std::map<std::string, Group> groups;
 

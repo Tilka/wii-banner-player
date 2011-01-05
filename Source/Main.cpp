@@ -124,7 +124,7 @@ int main(int argc, char* argv[])
 
 	WiiBanner::Layout* layout = banner.GetBanner();
 
-	window.SetSize(layout->GetWidth(), layout->GetHeight());
+	window.SetSize((int)layout->GetWidth(), (int)layout->GetHeight());
 
 	//glViewport(0, 0, layout->GetWidth(), layout->GetHeight());
 
@@ -185,12 +185,16 @@ int main(int argc, char* argv[])
 				case sf::Key::Left:
 					layout->SetFrame(layout->GetFrame()
 						- (1 + 4 * window.GetInput().IsKeyDown(sf::Key::LShift)));
+					
+					std::cout << "frame: " << layout->GetFrame() << '\n';
 					break;
 
 					// next frame
 				case sf::Key::Right:
 					layout->SetFrame(layout->GetFrame()
 						+ (1 + 4 * window.GetInput().IsKeyDown(sf::Key::LShift)));
+
+					std::cout << "frame: " << layout->GetFrame() << '\n';
 					break;
 
 					// restart playback
@@ -210,7 +214,7 @@ int main(int argc, char* argv[])
 					// change layout
 				case sf::Key::Return:
 					layout = (layout == banner.GetBanner()) ? banner.GetIcon() : banner.GetBanner();
-					window.SetSize(layout->GetWidth(), layout->GetHeight());
+					window.SetSize((int)layout->GetWidth(), (int)layout->GetHeight());
 					break;
 				}
 				break;

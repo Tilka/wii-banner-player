@@ -21,30 +21,24 @@ misrepresented as being the original software.
 distribution.
 */
 
-#ifndef _TEXTURE_H_
-#define _TEXTURE_H_
-
-#include <list>
-#include <string>
-#include <vector>
-
-#include "Types.h"
-
-#include "WrapGx.h"
+#include "Textbox.h"
 
 namespace WiiBanner
 {
 
-class Texture
+Textbox::Textbox(std::istream& file)
+	: Pane(file)
 {
-public:
-	void Load(std::istream& file);
+	file >> BE >> text_buf_bytes >> text_str_bytes
+		>> material_index >> font_index >> text_position >> text_alignment;
 
-	GXTexObj texobj;
+	file.seekg(2, std::ios::cur);
 
-	std::string name;
-};
+	file >> BE >> text_str_offset;
 
+	ReadBEArray(file, colors, 2);
+
+	file >> BE >> width >> height >> space_char >> space_line;
 }
 
-#endif
+}
