@@ -74,15 +74,15 @@ void Texture::Load(std::istream& file)
 			file.seekg(file_start + palette_offset, std::ios::beg);
 
 			u16 palette_count;
-			u16 palette_size;
+			u16 palette_unused; // u8 unpacked, u8 pad8
 			u32 palette_format;
-			u16 palette_data_offset;
+			u32 palette_data_offset;
 
-			file >> BE >> palette_count >> palette_size
+			file >> BE >> palette_count >> palette_unused
 				>> palette_format >> palette_data_offset;
 
 			std::cout << "palette_offset != 0 (count: "
-				<< palette_count << " format: "<< palette_format << " size: " << palette_size << ")\n";
+				<< palette_count << " format: "<< palette_format << ")\n";
 
 			// TODO: check if > sizeof(g_tlut_read_buffer)
 
