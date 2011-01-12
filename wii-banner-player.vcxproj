@@ -137,6 +137,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Source\Animator.cpp" />
+    <ClCompile Include="Source\Banner.cpp" />
     <ClCompile Include="Source\Endian.cpp" />
     <ClCompile Include="Source\Font.cpp" />
     <ClCompile Include="Source\Layout.cpp" />
@@ -147,11 +148,13 @@
     <ClCompile Include="Source\Sound.cpp" />
     <ClCompile Include="Source\Textbox.cpp" />
     <ClCompile Include="Source\Texture.cpp" />
-    <ClCompile Include="Source\WiiBanner.cpp" />
+    <ClCompile Include="Source\Window.cpp" />
     <ClCompile Include="Source\WrapGx.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Animator.h" />
+    <ClInclude Include="Source\Banner.h" />
+    <ClInclude Include="Source\Endian.h" />
     <ClInclude Include="Source\Font.h" />
     <ClInclude Include="Source\Layout.h" />
     <ClInclude Include="Source\LZ77.h" />
@@ -162,7 +165,7 @@
     <ClInclude Include="Source\Textbox.h" />
     <ClInclude Include="Source\Texture.h" />
     <ClInclude Include="Source\Types.h" />
-    <ClInclude Include="Source\WiiBanner.h" />
+    <ClInclude Include="Source\Window.h" />
     <ClInclude Include="Source\WrapGx.h" />
   </ItemGroup>
   <ItemGroup>

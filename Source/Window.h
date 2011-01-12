@@ -21,7 +21,42 @@ misrepresented as being the original software.
 distribution.
 */
 
-#include "Endian.h"
+#include "Picture.h"
 
-BEStreamManip BE;
-LEStreamManip LE;
+#include "WrapGx.h"
+
+#ifndef WII_BNR_WINDOW_H_
+#define WII_BNR_WINDOW_H_
+
+namespace WiiBanner
+{
+
+class Window : public Quad
+{
+public:
+	typedef Quad Base;
+	
+	static const u32 BINARY_MAGIC = 'wnd1';
+
+	void Load(std::istream& file);
+
+private:
+	void Draw(const Resources& resources, u8 render_alpha) const;
+
+	struct
+	{
+		float l, r, t, b;
+
+	} inflation;
+
+	struct Frame
+	{
+	    u16 material_index;
+		u8 texture_flip;
+	};
+	std::vector<Frame> frames;
+};
+
+}
+
+#endif

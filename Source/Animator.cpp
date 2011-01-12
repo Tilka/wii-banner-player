@@ -23,70 +23,48 @@ distribution.
 
 #include "Animator.h"
 
-#include "WiiBanner.h"	// for ReadOffsetList
+#include "Pane.h"	// for ReadOffsetList
 
 namespace WiiBanner
 {
 
-void Animator::LoadKeyFrames(std::istream& file, u8 tag_count, std::streamoff origin, FrameNumber frame_offset)
+void Animator::LoadKeyFrames(std::istream& file, u8 tag_count, std::streamoff origin, u8 key_set)
 {
-	ReadOffsetList(file, tag_count, origin, [&]()
+	ReadOffsetList<u32>(file, tag_count, origin, [&]
 	{
 		const std::streamoff origin = file.tellg();
 
-		FourCC magic;
+		u32 animation_type;
 		u8 entry_count;
 
-		file >> magic >> entry_count;
+		file >> BE >> animation_type >> entry_count;
 		file.seekg(3, std::ios::cur);	// some padding
 
-		KeyFrameTag tag = (KeyFrameTag)-1;
-		if (magic == "RLPA")
-			tag = RLPA;
-		else if (magic == "RLTS")
-			tag = RLTS;
-		else if (magic == "RLVI")
-			tag = RLVI;
-		else if (magic == "RLVC")
-			tag = RLVC;
-		else if (magic == "RLMC")
-			tag = RLMC;
-		else if (magic == "RLTP")
-			tag = RLTP;
-		else if (magic == "RLIM")
-			tag = RLIM;
-		else
-		{
-			std::cout << "unknown frame tag: ";
-			std::cout.write((char*)magic.data, 4) << '\n';
-			//std::cin.get();
-		}
-
-		ReadOffsetList(file, entry_count, origin, [&]
+		ReadOffsetList<u32>(file, entry_count, origin, [&]
 		{
 			u8 index;
 			u8 target;
 			u8 data_type;
 			u8 pad;
-			u16 frame_count;
+			u16 key_count;
 			u16 pad1;
-			u32 offset;
+			u32 offset;	// TODO: handle this
 
 			file >> BE >> index >> target >> data_type >> pad
-				>> frame_count >> pad1 >> offset;
+				>> key_count >> pad1 >> offset;
 
-			const KeyType frame_type(tag, index, target);
+			const KeyType frame_type(static_cast<AnimationType>(animation_type), index, target);
 
 			switch (data_type)
 			{
 				// step key frame
 			case 0x01:
-				step_keys[frame_type].Load(file, frame_count, frame_offset);
+				keys[key_set].step_keys[frame_type].Load(file, key_count);
 				break;
 
 				// hermite key frame
 			case 0x02:
-				hermite_keys[frame_type].Load(file, frame_count, frame_offset);
+				keys[key_set].hermite_keys[frame_type].Load(file, key_count);
 				break;
 
 			default:
@@ -97,9 +75,9 @@ void Animator::LoadKeyFrames(std::istream& file, u8 tag_count, std::streamoff or
 	});
 }
 
-void Animator::SetFrame(FrameNumber frame_number)
+void Animator::SetFrame(FrameNumber frame_number, u8 key_set)
 {
-	ForEach(hermite_keys, [=](const std::pair<const KeyType&, const HermiteKeyHandler&> frame_handler)
+	ForEach(keys[key_set].hermite_keys, [=](const std::pair<const KeyType&, const HermiteKeyHandler&> frame_handler)
 	{
 		const auto& frame_type = frame_handler.first;
 		const auto frame_value = frame_handler.second.GetFrame(frame_number);
@@ -107,7 +85,7 @@ void Animator::SetFrame(FrameNumber frame_number)
 		ProcessHermiteKey(frame_type, frame_value);
 	});
 
-	ForEach(step_keys, [=](const std::pair<const KeyType&, const StepKeyHandler&> frame_handler)
+	ForEach(keys[key_set].step_keys, [=](const std::pair<const KeyType&, const StepKeyHandler&> frame_handler)
 	{
 		const auto& frame_type = frame_handler.first;
 		auto const frame_data = frame_handler.second.GetFrame(frame_number);
@@ -116,14 +94,14 @@ void Animator::SetFrame(FrameNumber frame_number)
 	});
 }
 
-void StepKeyHandler::Load(std::istream& file, u16 count, FrameNumber frame_offset)
+void StepKeyHandler::Load(std::istream& file, u16 count)
 {
 	while (count--)
 	{
 		FrameNumber frame;
 		file >> BE >> frame;
 
-		auto& data = keys[frame + frame_offset];
+		auto& data = keys[frame];
 		file >> BE >> data.data1 >> data.data2;
 
 		file.seekg(2, std::ios::cur);
@@ -132,19 +110,15 @@ void StepKeyHandler::Load(std::istream& file, u16 count, FrameNumber frame_offse
 	}
 }
 
-void HermiteKeyHandler::Load(std::istream& file, u16 count, FrameNumber frame_offset)
+void HermiteKeyHandler::Load(std::istream& file, u16 count)
 {
 	while (count--)
 	{
 		std::pair<FrameNumber, KeyData> pair;
 
-		// read the frame number
-		file >> BE >> pair.first;
-
-		// read the value and slope
-		file >> BE >> pair.second.value >> pair.second.slope;
-
-		pair.first += frame_offset;
+		// read the frame number, value and slope
+		file >> BE >> pair.first
+			>> pair.second.value >> pair.second.slope;
 
 		keys.insert(pair);
 
@@ -198,8 +172,7 @@ float HermiteKeyHandler::GetFrame(FrameNumber frame_number) const
 		// different frames, blend them together
 		// this is a "Cubic Hermite spline" apparently
 
-		// clamp frame_number
-		frame_number = std::max(prev->first, std::min(next->first, frame_number));
+		frame_number = Clamp(frame_number, prev->first, next->first);
 		
 		const float t = (frame_number - prev->first) / nf;
 
@@ -217,15 +190,17 @@ float HermiteKeyHandler::GetFrame(FrameNumber frame_number) const
 
 void Animator::ProcessHermiteKey(const KeyType& type, float value)
 {
-	std::cout << "unhandled key (" << name << "): tag: " << (int)type.tag
+	std::cout << "unhandled key (" << GetName() << "): type: " << FourCC(type.type)
 	<< " index: " << (int)type.index
 	<< " target: " << (int)type.target
+	<< " value: " << value
 	<< '\n';
 }
 
 void Animator::ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data)
 {
-	std::cout << "unhandled key (" << name << "): tag: " << (int)type.tag
+	std::cout << "unhandled key (" << GetName() << "): type: " << FourCC(type.type)
+	<< " index: " << (int)type.index
 	<< " target: " << (int)type.target
 	<< " data:" << (int)data.data1 << " " << (int)data.data2
 	<< '\n';

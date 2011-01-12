@@ -21,44 +21,14 @@ misrepresented as being the original software.
 distribution.
 */
 
-#ifndef _WII_BANNER_H_
-#define _WII_BANNER_H_
-
-#include <map>
-#include <list>
-#include <stack>
-#include <fstream>
-
-#include "WrapGx.h"
+#ifndef WII_BNR_BANNER_H_
+#define WII_BNR_BANNER_H_
 
 #include "Layout.h"
-#include "Picture.h"
 #include "Sound.h"
-
-#include "Types.h"
 
 namespace WiiBanner
 {
-
-template <typename F>
-void ReadOffsetList(std::istream& file, u32 count, std::streamoff origin, F func, std::streamoff pad = 0)
-{
-	std::streamoff next_offset = file.tellg();
-
-	while (count--)
-	{
-		file.seekg(next_offset, std::ios::beg);
-
-		u32 offset;
-		file >> BE >> offset;
-		file.seekg(pad, std::ios::cur);
-
-		next_offset = file.tellg();
-
-		file.seekg(origin + offset, std::ios::beg);
-		func();
-	}
-}
 
 class Banner
 {
@@ -66,13 +36,14 @@ public:
 	Banner(const std::string& filename);
 	~Banner();
 
-	Layout* GetBanner() { return layout_banner; }
-	Layout* GetIcon() { return layout_icon; }
-
-	BannerStream sound;
+	Layout* GetBanner() const { return layout_banner; }
+	Layout* GetIcon() const { return layout_icon; }
+	BannerStream* GetSound() const { return sound; }
 
 private:
 	Layout *layout_banner, *layout_icon;
+
+	BannerStream* sound;
 };
 
 }

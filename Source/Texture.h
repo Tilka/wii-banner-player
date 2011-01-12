@@ -21,8 +21,8 @@ misrepresented as being the original software.
 distribution.
 */
 
-#ifndef _TEXTURE_H_
-#define _TEXTURE_H_
+#ifndef WII_BNR_TEXTURE_H_
+#define WII_BNR_TEXTURE_H_
 
 #include <list>
 #include <string>
@@ -35,14 +35,18 @@ distribution.
 namespace WiiBanner
 {
 
-class Texture
+class Texture : public Named
 {
 public:
 	void Load(std::istream& file);
 
 	GXTexObj texobj;
+};
 
-	std::string name;
+class TextureList : public std::vector<Texture*>
+{
+public:
+	static const u32 BINARY_MAGIC = 'txl1';
 };
 
 }

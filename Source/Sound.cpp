@@ -30,6 +30,16 @@ distribution.
 namespace WiiBanner
 {
 
+static enum BinaryMagic
+{
+	BINARY_MAGIC_WAV = 'RIFF',
+	BINARY_MAGIC_AIFF = 'FORM',
+	BINARY_MAGIC_BNS = 'BNS ',
+
+	BINARY_MAGIC_BNS_INFO = 'INFO',
+	BINARY_MAGIC_BNS_DATA = 'DATA'
+};
+
 struct BNS
 {
 	struct BNSHeader
@@ -50,7 +60,7 @@ struct BNS
 		u32 size;
 		u8 codec;
 		u8 loop;
-		u8 num_channels;
+		u8 channel_count;
 		u8 unk;
 		u16 sample_rate;
 		u16 unk2;
@@ -96,16 +106,16 @@ struct BNS
 
 		in.seekg(start + hdr.info_off, in.beg);
 		in >> info.magic >> BE >> info.size >> info.codec >> info.loop
-			>> info.num_channels >> info.unk >> info.sample_rate
+			>> info.channel_count >> info.unk >> info.sample_rate
 			>> info.unk2 >> info.loop_start >> info.sample_count;
 
 		in.seekg(6 * sizeof(u32), in.cur);
 		
-		if (info.num_channels == 1)
+		if (info.channel_count == 1)
 		{
 			ReadBEArray(in, info.coefs[0], 16);
 		}
-		else if (info.num_channels == 2)
+		else if (info.channel_count == 2)
 		{
 			// L, R
 			in.seekg(1 * sizeof(u32), in.cur);
@@ -117,7 +127,7 @@ struct BNS
 		}
 		else
 		{
-			std::cout << (int)info.num_channels << " channels unsupported!\n";
+			std::cout << (int)info.channel_count << " channels unsupported!\n";
 		}
 
 		in.seekg(start + hdr.data_off, in.beg);
@@ -129,14 +139,14 @@ struct BNS
 
 		if ((hdr.info_len != info.size)
 			|| (hdr.data_len != data.size)
-			|| (info.magic != "INFO")
-			|| (data.magic != "DATA"))
+			|| (info.magic != BINARY_MAGIC_BNS_INFO)
+			|| (data.magic != BINARY_MAGIC_BNS_DATA))
 			std::cout << "sound.bin appears invalid\n";
 	}
 
-	u8  GetChannelsCount() { return info.num_channels; }
+	u8  GetChannelsCount() { return info.channel_count; }
 	u32 GetSamplesCount()  { return info.sample_count * GetChannelsCount(); }
-	u32 GetSampleRate()    { return info.sample_rate; }
+	u16 GetSampleRate()    { return info.sample_rate; }
 
 	u32 DecodeChannelToPCM(s16 *pcm, u32 pcm_start_pos,
 		u32 adpcm_start_pos, u32 adpcm_end_pos)
@@ -183,7 +193,7 @@ struct BNS
 				dsp_regs.yn1 = sample;
 
 				pcm[pcm_pos++] = sample;
-				if (info.num_channels == 2)
+				if (info.channel_count == 2)
 					++pcm_pos;
 			}
 		}
@@ -196,9 +206,9 @@ struct BNS
 		dsp_regs.ClearHistory();
 		memcpy(dsp_regs.coefs, info.coefs[0], 16 * 2);
 		DecodeChannelToPCM(pcm, 0, 0,
-			(info.num_channels == 2) ? info.right_start : data.size);
+			(info.channel_count == 2) ? info.right_start : data.size);
 
-		if (info.num_channels == 2)
+		if (info.channel_count == 2)
 		{
 			dsp_regs.ClearHistory();
 			memcpy(dsp_regs.coefs, info.coefs[1], 16 * 2);
@@ -207,7 +217,7 @@ struct BNS
 	}
 };
 
-bool BannerStream::Open(std::istream& file)
+bool BannerStream::Load(std::istream& file)
 {
 	BNS bns_file;
 	FourCC magic;
@@ -219,24 +229,24 @@ bool BannerStream::Open(std::istream& file)
 	const std::streamoff in_start = in.tellg();
 	in >> magic;
 
-	if (magic == "RIFF")
+	if (magic == BINARY_MAGIC_WAV)
 	{
 		format = FORMAT_WAV;
 		in >> LE >> file_len;
 	}
-	else if (magic == "FORM")
+	else if (magic == BINARY_MAGIC_AIFF)
 	{
 		format = FORMAT_AIFF;
 		in >> BE >> file_len;
 	}
-	else if (magic == "BNS ")
+	else if (magic == BINARY_MAGIC_BNS)
 	{
 		format = FORMAT_BNS;
 		in.seekg(in_start, in.beg);
 		bns_file.Open(in);
 
 		if (bns_file.info.loop)
-			loop_position = bns_file.info.loop_start * bns_file.info.num_channels;
+			loop_position = bns_file.info.loop_start * bns_file.info.channel_count;
 	}
 	else
 		return false;
@@ -273,8 +283,7 @@ bool BannerStream::Open(std::istream& file)
 
 bool BannerStream::OnStart()
 {
-	position = 0;
-
+	//position = 0;
 	return true;
 }
 

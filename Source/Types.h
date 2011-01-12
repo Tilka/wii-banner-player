@@ -21,8 +21,8 @@ misrepresented as being the original software.
 distribution.
 */
 
-#ifndef _TYPES_H_
-#define _TYPES_H_
+#ifndef WII_BNR_TYPES_H_
+#define WII_BNR_TYPES_H_
 
 #define NOMINMAX
 #include <Windows.h>
@@ -32,151 +32,64 @@ distribution.
 #include <iostream>
 
 #include <algorithm>
+#include <type_traits>
 
 #include "CommonTypes.h"
 #include "CommonFuncs.h"
 
-namespace Common
-{
+// TODO: remove
+#include "Endian.h"
 
-template <int S, typename T>
-struct swapX;
-
-template <typename T>
-struct swapX<1, T>
+struct Vec2
 {
-	static inline T swap(T data)
-	{
-		return data;
-	}
+	float x, y;
 };
 
-template <typename T>
-struct swapX<2, T>
+struct Vec3
 {
-	static inline T swap(T data)
-	{
-		const u16 s = swap16((u8*)&data);
-		return *(T*)&s;
-	}
+	float x, y, z;
 };
 
-template <typename T>
-struct swapX<4, T>
+class FourCC
 {
-	static inline T swap(T data)
+	friend std::istream& operator>>(std::istream& lhs, FourCC& rhs);
+	friend std::ostream& operator<<(std::ostream& lhs, const FourCC& rhs);
+
+public:
+	FourCC() {}
+	FourCC(u32 _data) { data = _data; }
+
+	bool operator==(u32 rhs) const
 	{
-		const u32 s = swap32((u8*)&data);
-		return *(T*)&s;
+		return data == rhs;
 	}
+
+	bool operator!=(u32 rhs) const
+	{
+		return !(*this == rhs);
+	}
+
+private:
+	u32 data;
 };
 
-template <typename T>
-struct swapX<8, T>
-{
-	static inline T swap(T data)
-	{
-		const u64 s = swap64((u8*)&data);
-		return *(T*)&s;
-	}
-};
-
-template <typename T>
-inline T swap(T data)
-{
-	return swapX<sizeof(T), T>::swap(data);
-}
-
-}
-
-struct FourCC
-{
-	bool operator==(const char str[]) const
-	{
-		return !memcmp(data, str, sizeof(data));
-	}
-
-	bool operator!=(const char str[]) const
-	{
-		return !(*this == str);
-	}
-
-	u8 data[4];
-};
+#define MAKE_FOURCC(a, b, c, d) ((a) * (1 << 24) + (b) * (1 << 16) + (c) * (1 << 8) + (d) * (1 << 0))
 
 inline std::istream& operator>>(std::istream& lhs, FourCC& rhs)
 {
-	lhs.read((char*)rhs.data, sizeof(rhs.data));
-
+	lhs >> BE >> rhs.data;
 	return lhs;
 }
 
-class BEStream
+inline std::ostream& operator<<(std::ostream& lhs, const FourCC& rhs)
 {
-public:
-	BEStream(std::istream& stream)
-		: m_stream(stream)
-	{}
-
-	template <typename V>
-	BEStream& operator>>(V& rhs)
-	{
-		V value;
-		m_stream.read((char*)&value, sizeof(value));
-		rhs = Common::swap(value);
-
-		return *this;
-	}
-
-private:
-	std::istream& m_stream;
-};
-
-struct BEStreamManip
-{
-	BEStreamManip() {}
-};
-
-extern BEStreamManip BE;
-
-inline BEStream operator>>(std::istream& lhs, const BEStreamManip&)
-{
-	return BEStream(lhs);
-}
-
-class LEStream
-{
-public:
-	LEStream(std::istream& stream)
-		: m_stream(stream)
-	{}
-
-	template <typename V>
-	LEStream& operator>>(V& rhs)
-	{
-		m_stream.read((char*)&rhs, sizeof(rhs));
-
-		return *this;
-	}
-
-private:
-	std::istream& m_stream;
-};
-
-struct LEStreamManip
-{
-	LEStreamManip() {}
-};
-
-extern LEStreamManip LE;
-
-inline LEStream operator>>(std::istream& lhs, const LEStreamManip&)
-{
-	return LEStream(lhs);
+	const u32 data = Common::swap32(rhs.data);
+	lhs.write(reinterpret_cast<const char*>(&data), 4);
+	return lhs;
 }
 
 template <typename C, typename F>
-void ForEach(C& container, F func)
+inline void ForEach(C& container, F func)
 {
 	std::for_each(container.begin(), container.end(), func);
 }
@@ -188,21 +101,77 @@ void ForEach(C& container, F func)
 //}
 
 template <typename T>
-void ReadBEArray(std::istream& file, T* data, unsigned int size)
+inline T Clamp(T value, T min, T max)
 {
-	auto& bestrm = file >> BE;
-
-	for (unsigned int i = 0; i != size; ++i)
-		bestrm >> data[i];
+	return (value < min) ? min : (value < max) ? value : max;
 }
 
-template <typename T>
-void ReadLEArray(std::istream& file, T* data, unsigned int size)
+template <typename T, typename B>
+inline T RoundUp(T value, B base)
 {
-	auto& lestrm = file >> LE;
+	return static_cast<T>((value + (base - 1)) & ~(base - 1));
+}
 
-	for (unsigned int i = 0; i != size; ++i)
-		lestrm >> data[i];
+template <typename T, typename B>
+inline T RoundDown(T value, B base)
+{
+	return static_cast<T>(value & ~(base - 1));
+}
+
+template <typename C, typename F>
+void ReadSections(std::istream& file, C count, F func)
+{	
+	while (count--)
+	{
+		const std::streamoff start = file.tellg();
+
+		FourCC magic;
+		u32 size = 0;
+		file >> magic >> BE >> size;
+
+		func(magic, start);
+
+		file.seekg(start + size, std::ios::beg);
+	}
+}
+
+class Named
+{
+public:
+	std::string& GetName() { return name; }	// how silly is this?
+	const std::string& GetName() const { return name; }
+	void SetName(const std::string& _name) { name = _name; }
+
+private:
+	std::string name;
+};
+
+inline std::string ReadNullTerminatedString(std::istream& file)
+{
+	std::string str;
+	std::getline(file, str, '\0');
+	return str;
+}
+
+template <int L>
+std::string ReadFixedLengthString(std::istream& file)
+{
+	char str[L + 1] = {};
+	file.read(str, L);
+	return str;
+}
+
+inline void WriteNullTerminatedString(std::ostream& file, const std::string& str)
+{
+	file << str << '\0';
+}
+
+template <int L>
+inline void WriteFixedLengthString(std::ostream& file, const std::string& str)
+{
+	char str[L] = {};
+	std::copy(str.begin(), (str.length() > L) ? str.begin() + L : str.end(), str);
+	file.write(str, L);
 }
 
 #endif

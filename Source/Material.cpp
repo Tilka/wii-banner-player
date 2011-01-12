@@ -28,20 +28,17 @@ distribution.
 namespace WiiBanner
 {
 
-Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
-	: textures(txtrs)
-{
-	{
-	char read_name[21] = {};
-	file.read(read_name, 20);
-	name = read_name;
-	}
+// TODO: handle channel control
+// TODO: handle tev swap table
+// TODO: ind texture stuff
 
-	//std::cout << "\tmaterial: " << name << '\n';
+void Material::Load(std::istream& file)
+{
+	SetName(ReadFixedLengthString<NAME_LENGTH>(file));
 
 	// read colors
-	ReadBEArray(file, &color_regs->r, 4 * 3);
-	ReadBEArray(file, color_constants[0], sizeof(color_constants));
+	ReadBEArray(file, &color_regs->r, sizeof(color_regs) / sizeof(s16));
+	ReadBEArray(file, &color_constants->r, sizeof(color_constants));
 
 	union
 	{
@@ -52,7 +49,7 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 			u32 texture_map : 4;
 			u32 texture_srt : 4;
 			u32 texture_coord_gen : 4;
-			u32 tev_swap_mode : 1;
+			u32 tev_swap_table : 1;
 			u32 ind_srt : 2;
 			u32 ind_stage : 3;
 			u32 tev_stage : 5;
@@ -82,58 +79,55 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 	// texture srt
 	for (u32 i = 0; i != flags.texture_srt; ++i)
 	{
-		texture_srts.push_back(TextureSrt());
-		auto& srt = texture_srts.back();
+		TextureSrt srt;
 
 		file >> BE >> srt.translate.x >> srt.translate.y >> srt.rotate >> srt.scale.x >> srt.scale.y;
 
-		//std::cout << "XTrans: " << translate.x << " YTrans: " << translate.y << " Rotate: " << rotate
-			//<< " XScale: " << scale.x << " YScale: " << scale.y << '\n';
+		texture_srts.push_back(srt);
 	}
 	//if (!flags.texture_srt)
 	//{
 	//	// set up defaults, this seems dumb/wrong
-	//	texture_srts.push_back(TextureSrt());
-	//	auto& srt = texture_srts.back();
+	//	TextureSrt srt;
 
-	//	srt.rotate = 0.f;
-	//	srt.scale.x = srt.scale.y = srt.translate.x = srt.translate.y = 1.f;
+	//	srt.rotate = srt.translate.x = srt.translate.y = 0.f;
+	//	srt.scale.x = srt.scale.y = 1.f;
+
+	//	texture_srts.push_back(srt);
 	//}
 
 	// texture coord gen
 	for (u32 i = 0; i != flags.texture_coord_gen; ++i)
 	{
-		texture_coord_gens.push_back(TextureCoordGen());
-		auto& coord = texture_coord_gens.back();
+		TextureCoordGen coord;
 
 		file >> BE >> coord.tgen_type >> coord.tgen_src >> coord.mtrx_src;
-		//file >> BE >> tgen_type >> tgen_src >> mtrx_src;
 		file.seekg(1, std::ios::cur);
+
+		texture_coord_gens.push_back(coord);
 	}
 	//if (!flags.texture_coord)
 	//{
 	//	// set up defaults, this seems dumb/wrong
-	//	texture_coord_gens.push_back(TextureCoordGen());
-	//	auto& coord = texture_coord_gens.back();
+	//	TextureCoordGen coord;
 
 	//	coord.mtrx_src = 30;
+
+	//	texture_coord_gens.push_back(coord);
 	//}
 
 	// channel control
 	if (flags.channel_control)
 	{
 		u8 color_matsrc, alpha_matsrc;
-		//u8 pad1, pad2;
 
-		file >> BE >> color_matsrc >> alpha_matsrc;// >> pad1 >> pad2;
+		file >> BE >> color_matsrc >> alpha_matsrc;
 		file.seekg(2, std::ios::cur);
 
 		if (color_matsrc != alpha_matsrc)
 		{
 			//std::cout << "color: " << (int)color_matsrc
 			//	<< " alpha: " << (int)alpha_matsrc
-			//	//<< " pad1: " << (int)pad1
-			//	//<< " pad2: " << (int)pad2
 			//	<< '\n';
 			//std::cin.get();
 		}
@@ -144,21 +138,17 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 	// material color
 	if (flags.material_color)
 	{
-		ReadBEArray(file, color, 4);
-
-		// these are like always 255
-		//std::cout << "color: " << (int)color[0] << ',' << (int)color[1] << ',' << (int)color[2] << '\n';
-		//std::cin.get();
+		ReadBEArray(file, &color.r, sizeof(color));
 	}
 	else
 	{
-		memset(color, 255, 4);
+		memset(&color.r, 0xff, 4);
 	}
 
 	// tev swap table
-	if (flags.tev_swap_mode)
+	if (flags.tev_swap_table)
 	{
-		ReadBEArray(file, tev_swap_mode, 4);
+		ReadBEArray(file, &tev_swap_table->value, sizeof(tev_swap_table));
 
 		//std::cout << "TevSwapModeTable:\n";
 		//for (unsigned int i = 0; i != 4; ++i)
@@ -178,7 +168,7 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 		// TODO: read des guys
 		//file >> BE >> translate.x >> translate.y >> rotate >> scale.x >> scale.y;
 
-		//file.seekg(5 * 4, std::ios::cur);
+		file.seekg(5 * 4, std::ios::cur);
 
 		//std::cout << "ind_texture: SRT\n";
 	}
@@ -196,68 +186,66 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 		//std::cout << "ind_texture: " << name << "tex_coord: " << (int)tex_coord
 		//	<< " tex_map: " << (int)tex_map << '\n';
 		//std::cin.get();
+
+		std::cout << "Ind Stages not yet supported !!\n";
 	}
 
 	// tev stage
 	for (u32 i = 0; i != flags.tev_stage; ++i)
 	{
-		tev_stages.push_back(TevStage());
+		TevStage ts;
 
-		file.read((char*)&tev_stages.back(), sizeof(TevStage));
+		file.read(ts.data, sizeof(ts.data));
 
-		//std::cout << "TevStage\n";
+		tev_stages.push_back(ts);
 	}
 	if (!flags.tev_stage)
 	{
 		// set up defaults, this seems dumb/wrong
 
-		{
-		tev_stages.push_back(TevStage());
-		auto& tev = tev_stages.back();
+		TevStage tev;
+		memset(tev.data, 0, sizeof(tev.data));
 
-		tev.aC = 2;
-		tev.bC = 4;
-		tev.cC = 8;
-		tev.dC = 0xf;
+		// 1st stage
+		tev.color_in.a = 2;
+		tev.color_in.b = 4;
+		tev.color_in.c = 8;
+		tev.color_in.d = 0xf;
 
-		tev.aA = 1;
-		tev.bA = 2;
-		tev.cA = 4;
-		tev.dA = 0x7;
+		tev.alpha_in.a = 1;
+		tev.alpha_in.b = 2;
+		tev.alpha_in.c = 4;
+		tev.alpha_in.d = 0x7;
 
-		tev.texmap = 0;
-		tev.mtxid = 0;
-		}
+		tev.tex_map = 0;
 
-		{
-		tev_stages.push_back(TevStage());
-		auto& tev = tev_stages.back();
+		tev_stages.push_back(tev);
 
-		tev.aC = 0xf;
-		tev.bC = 0;
-		tev.cC = 10;
-		tev.dC = 0xf;
+		// 2nd stage
+		tev.color_in.a = 0xf;
+		tev.color_in.b = 0;
+		tev.color_in.c = 10;
+		tev.color_in.d = 0xf;
 
-		tev.aA = 0x7;
-		tev.bA = 0;
-		tev.cA = 5;
-		tev.dA = 0x7;
+		tev.alpha_in.a = 0x7;
+		tev.alpha_in.b = 0;
+		tev.alpha_in.c = 5;
+		tev.alpha_in.d = 0x7;
 
-		tev.texmap = 0;
-		tev.mtxid = 0;
-		}
+		tev.tex_map = 0;
+
+		tev_stages.push_back(tev);
 	}
 
-	// TODO:
 	// alpha compare
 	if (flags.alpha_compare)
 	{
-		file >> BE >> alpha_compare.function >> alpha_compare.aop
+		file >> BE >> alpha_compare.function >> alpha_compare.op
 			>> alpha_compare.ref0 >> alpha_compare.ref1;
 
 		//std::cout << "alpha compare:\t"
 		//	<< " function: " << (int)alpha_compare.function
-		//	<< " aop: " << (int)alpha_compare.aop << " ref0: " << (int)alpha_compare.ref0
+		//	<< " op: " << (int)alpha_compare.op << " ref0: " << (int)alpha_compare.ref0
 		//	<< " ref1: " << (int)alpha_compare.ref1 << '\n';
 		//std::cin.get();
 	}
@@ -266,7 +254,7 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 		alpha_compare.function = 0x66;
 		alpha_compare.ref0 = 0;
 		alpha_compare.ref1 = 0;
-		//alpha_compare.aop = ;
+		//alpha_compare.op = ;
 	}
 
 	// blend mode
@@ -289,11 +277,11 @@ Material::Material(std::istream& file, const std::vector<Texture*>& txtrs)
 	}
 }
 
-void Material::Apply() const
+void Material::Apply(const TextureList& textures) const
 {
 	// alpha compare
 	GX_SetAlphaCompare(alpha_compare.function & 0xf, alpha_compare.ref0,
-		alpha_compare.aop, alpha_compare.function >> 4, alpha_compare.ref1);
+		alpha_compare.op, alpha_compare.function >> 4, alpha_compare.ref1);
 
 	// blend mode
 	GX_SetBlendMode(blend_mode.type, blend_mode.src_factor, blend_mode.dst_factor, blend_mode.logical_op);
@@ -309,10 +297,10 @@ void Material::Apply() const
 	{
 		if (tr.tex_index < textures.size())
 		{
-			auto& txtr = *textures[tr.tex_index];
+			auto* const texobj = &textures[tr.tex_index]->texobj;
 
-			GX_LoadTexObj(&txtr.texobj, i);
-			GX_InitTexObjWrapMode(&txtr.texobj, tr.wrap_s, tr.wrap_t);
+			GX_LoadTexObj(texobj, i);
+			GX_InitTexObjWrapMode(texobj, tr.wrap_s, tr.wrap_t);
 		}
 
 		++i;
@@ -346,6 +334,7 @@ void Material::Apply() const
 
 		++i;
 	});
+	// TODO: is this needed?
 	for (; i != 8; ++i)
 	{
 		glActiveTexture(GL_TEXTURE0 + i);
@@ -359,19 +348,19 @@ void Material::Apply() const
 	int i = 0;
 	ForEach(tev_stages, [&](const TevStage& ts)
 	{
-		GX_SetTevOrder(i, ts.texcoord, ts.texmap, ts.color);
+		GX_SetTevOrder(i, ts.tex_coord, ts.tex_map, ts.color);
 		GX_SetTevSwapMode(i, ts.ras_sel, ts.tex_sel);
 
-		GX_SetTevColorIn(i, ts.aC, ts.bC, ts.cC, ts.dC);
-		GX_SetTevColorOp(i, ts.tevopC, ts.tevbiasC, ts.tevscaleC, ts.clampC, ts.tevregidC);
-		GX_SetTevKColorSel(i, ts.selC);
+		GX_SetTevColorIn(i, ts.color_in.a, ts.color_in.b, ts.color_in.c, ts.color_in.d);
+		GX_SetTevColorOp(i, ts.color_in.op, ts.color_in.bias, ts.color_in.bias, ts.color_in.bias, ts.color_in.reg_id);
+		GX_SetTevKColorSel(i, ts.color_in.constant_sel);
 
-		GX_SetTevAlphaIn(i, ts.aA, ts.bA, ts.cA, ts.dA);
-		GX_SetTevAlphaOp(i, ts.tevopA, ts.tevbiasA, ts.tevscaleA, ts.clampA, ts.tevregidA);
-		GX_SetTevKAlphaSel(i, ts.selA);
+		GX_SetTevAlphaIn(i, ts.alpha_in.a, ts.alpha_in.b, ts.alpha_in.c, ts.alpha_in.d);
+		GX_SetTevAlphaOp(i, ts.alpha_in.op, ts.alpha_in.bias, ts.alpha_in.bias, ts.alpha_in.bias, ts.alpha_in.reg_id);
+		GX_SetTevKAlphaSel(i, ts.alpha_in.constant_sel);
 
-		GX_SetTevIndirect(i, ts.indtexid, ts.format, ts.bias, ts.mtxid, 
-			ts.wrap_s, ts.wrap_t, ts.addprev, ts.utclod, ts.aIND);
+		GX_SetTevIndirect(i, ts.ind.tex_id, ts.ind.format, ts.ind.bias, ts.ind.mtx, 
+			ts.ind.wrap_s, ts.ind.wrap_t, ts.ind.add_prev, ts.ind.utc_lod, ts.ind.alpha);
 
 		++i;
 	});
@@ -379,11 +368,14 @@ void Material::Apply() const
 	// enable correct number of tev stages
 	GX_SetNumTevStages(i);
 	}
+
+	// currently this will do nothing because of vertex_colors
+	glColor4ubv(&color.r);
 }
 
 void Material::ProcessHermiteKey(const KeyType& type, float value)
 {
-	if (type.tag == RLTS)	// texture scale/rotate/translate
+	if (type.type == ANIMATION_TYPE_TEXTURE_SRT)	// texture scale/rotate/translate
 	{
 		if (type.target < 5 && type.index < texture_srts.size())
 		{
@@ -401,19 +393,21 @@ void Material::ProcessHermiteKey(const KeyType& type, float value)
 			};
 
 			*values[type.target] = value;
+
+			return;
 		}
 		return;	// TODO: remove this return
 	}
-	else if (type.tag == RLIM)	// ind texture crap
+	else if (type.type == ANIMATION_TYPE_IND_MATERIAL)	// ind texture crap
 	{
 		return;	// TODO: remove this return
 	}
-	else if (type.tag == RLMC)	// material color
+	else if (type.type == ANIMATION_TYPE_MATERIAL_COLOR)	// material color
 	{
 		if (type.target < 4)
 		{
 			// color
-			color[type.target] = (u8)value;
+			(&color.r)[type.target] = (u8)value;
 			return;
 		}
 		else if (type.target < 0x10)
@@ -425,7 +419,7 @@ void Material::ProcessHermiteKey(const KeyType& type, float value)
 		else if (type.target < 0x20)
 		{
 			// tev color constants
-			color_constants[0][type.target - 0x10] = (u8)value;
+			(&color_constants->r)[type.target - 0x10] = (u8)value;
 			return;
 		}
 	}
@@ -435,7 +429,7 @@ void Material::ProcessHermiteKey(const KeyType& type, float value)
 
 void Material::ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data)
 {
-	if (type.tag == RLTP)	// tpl palette
+	if (type.type == ANIMATION_TYPE_TEXTURE_PALETTE)	// tpl palette
 	{
 		// TODO: this aint no good
 

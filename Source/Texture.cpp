@@ -28,6 +28,11 @@ distribution.
 namespace WiiBanner
 {
 
+static enum BinaryMagic
+{
+	BINARY_MAGIC_TEXTURE = MAKE_FOURCC(0x00, ' ', 0xAF, 0x30)
+};
+
 static char g_tlut_read_buffer[16 * 1024];
 static char g_texture_read_buffer[512 * 512 * 4];
 
@@ -36,11 +41,14 @@ void Texture::Load(std::istream& file)
 	const std::streamoff file_start = file.tellg();
 
 	// read file header
-	FourCC magic; // (0x00, 0x20, 0xAF, 0x30)
+	FourCC magic;
 	u32 texture_count;
-	u32 header_size; // always 0x0c
+	u32 header_size; // always 0xC
 
 	file >> magic >> BE >> texture_count >> header_size;
+
+	if (magic != BINARY_MAGIC_TEXTURE)
+		return;	// bad header
 
 	// seek to end of header
 	file.seekg(header_size - 0xC, std::ios::cur);

@@ -21,8 +21,8 @@ misrepresented as being the original software.
 distribution.
 */
 
-#ifndef _ANIMATOR_H_
-#define _ANIMATOR_H_
+#ifndef WII_BNR_ANIMATOR_H_
+#define WII_BNR_ANIMATOR_H_
 
 #include <map>
 
@@ -33,21 +33,22 @@ namespace WiiBanner
 
 typedef float FrameNumber;
 
-enum KeyFrameTag
+enum AnimationType
 {
-	RLPA,
-	RLTS,
-	RLVI,
-	RLVC,
-	RLMC,
-	RLTP,
-	RLIM
+	//ANIMATION_TYPE_INVALID = 0x0,
+	ANIMATION_TYPE_PANE = 'RLPA',
+	ANIMATION_TYPE_TEXTURE_SRT = 'RLTS',
+	ANIMATION_TYPE_VISIBILITY = 'RLVI',
+	ANIMATION_TYPE_VERTEX_COLOR = 'RLVC',
+	ANIMATION_TYPE_MATERIAL_COLOR = 'RLMC',
+	ANIMATION_TYPE_TEXTURE_PALETTE = 'RLTP',
+	ANIMATION_TYPE_IND_MATERIAL = 'RLIM',
 };
 
 struct KeyType
 {
-	KeyType(KeyFrameTag _tag, u8 _index, u8 _target)
-		: tag(_tag)
+	KeyType(AnimationType _type, u8 _index, u8 _target)
+		: type(_type)
 		, index(_index)
 		, target(_target)
 	{}
@@ -57,34 +58,30 @@ struct KeyType
 		return memcmp(this, &rhs, sizeof(*this)) < 0;
 	}
 
-	const KeyFrameTag tag;
+	const AnimationType type;
 	const u8 index, target;
 };
 
 class StepKeyHandler
 {
 public:
-	void Load(std::istream& file, u16 count, FrameNumber frame_offset);
+	void Load(std::istream& file, u16 count);
 
-	union KeyData
+	struct KeyData
 	{
-		struct
-		{
-			u8 data1, data2;
-		};
-
-		u16 value;
+		u8 data1, data2;
 	};
 
 	KeyData GetFrame(FrameNumber frame_number) const;
 
+private:
 	std::map<FrameNumber, KeyData> keys;
 };
 
 class HermiteKeyHandler
 {
 public:
-	void Load(std::istream& file, u16 count, FrameNumber frame_offset);
+	void Load(std::istream& file, u16 count);
 
 	struct KeyData
 	{
@@ -96,24 +93,30 @@ public:
 	std::multimap<FrameNumber, KeyData> keys;
 };
 
-class Animator
+class Animator : public Named
 {
 public:
-	virtual ~Animator() {}
+	enum
+	{
+		NAME_LENGTH = 20
+	};
 
-	void LoadKeyFrames(std::istream& file, u8 tag_count, std::streamoff origin, FrameNumber frame_offset);
+	void LoadKeyFrames(std::istream& file, u8 tag_count, std::streamoff origin, u8 key_set);
 
-	virtual void SetFrame(FrameNumber frame);
-
-//protected:
-	std::string name;
-
-	std::map<KeyType, StepKeyHandler> step_keys;
-	std::map<KeyType, HermiteKeyHandler> hermite_keys;
+	virtual void SetFrame(FrameNumber frame, u8 key_set);
 
 protected:
+	Animator() {}
+
 	virtual void ProcessHermiteKey(const KeyType& type, float value);
 	virtual void ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data);
+
+private:
+	struct
+	{
+		std::map<KeyType, StepKeyHandler> step_keys;
+		std::map<KeyType, HermiteKeyHandler> hermite_keys;
+	} keys[2];
 };
 
 }

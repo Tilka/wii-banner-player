@@ -36,7 +36,7 @@ distribution.
 
 #include <gl/glew.h>
 
-#include "WiiBanner.h"
+#include "Banner.h"
 
 #include <SFML/Window.hpp>
 #include <SFML/Audio.hpp>
@@ -122,6 +122,16 @@ int main(int argc, char* argv[])
 
 	WiiBanner::Banner banner(fname);
 
+	if (!(banner.GetBanner() && banner.GetIcon() && banner.GetSound()))
+	{
+		std::cout << "Failed to load banner.\n";
+		std::cin.get();
+		return 1;
+	}
+
+	banner.GetBanner()->SetLanguage("ENG");
+	banner.GetIcon()->SetLanguage("ENG");	// TODO: do icons ever have groups?
+
 	WiiBanner::Layout* layout = banner.GetBanner();
 
 	window.SetSize((int)layout->GetWidth(), (int)layout->GetHeight());
@@ -134,7 +144,7 @@ int main(int argc, char* argv[])
 	glDepthFunc(GL_ALWAYS);
 
 	bool banner_play = true;
-	banner.sound.Play();
+	banner.GetSound()->Play();
 
 	while (window.IsOpened())
 	{
@@ -150,7 +160,7 @@ int main(int argc, char* argv[])
 			case sf::Event::Resized:
 				{
 					const float
-						banner_aspect = layout->GetWidth() / layout->GetHeight(),
+						banner_aspect = /*16.f / 9,*/layout->GetWidth() / layout->GetHeight(),
 						window_aspect = (float)ev.Size.Width / (float)ev.Size.Height;
 
 					if (banner_aspect > window_aspect)
@@ -174,9 +184,9 @@ int main(int argc, char* argv[])
 				case sf::Key::Space:
 					banner_play ^= true;
 					if (banner_play)
-						banner.sound.Play();
+						banner.GetSound()->Play();
 					else
-						banner.sound.Pause();
+						banner.GetSound()->Pause();
 					break;
 
 					// TODO make sound progress with frames, meh
@@ -200,14 +210,13 @@ int main(int argc, char* argv[])
 					// restart playback
 				case sf::Key::Back:
 					layout->SetFrame(0);
-					banner.sound.Stop();
+					banner.GetSound()->Restart();
 					if (banner_play)
-						banner.sound.Play();
+						banner.GetSound()->Play();
 					break;
 
 					// exit app
 				case sf::Key::Escape:
-					banner.sound.Stop();
 					window.Close();
 					break;
 
@@ -236,7 +245,25 @@ int main(int argc, char* argv[])
 		if (banner_play)
 			layout->AdvanceFrame();
 
-		// TODO: improve
-		sf::Sleep(1.f / 60.f);
+		// TODO: could be improved
+		// limit fps
+		static const int desired_fps = 60;
+		static int frame_count = 0;
+		static sf::Clock clock;
+		static float sleep_time = 1.f / desired_fps;
+
+		if (10 == frame_count)
+		{
+			sleep_time = (1.f / desired_fps) - (clock.GetElapsedTime() / frame_count - sleep_time);
+			
+			//std::cout << "sleep_time: " << (1.f / sleep_time) << '\n';
+
+			frame_count = 0;
+			clock.Reset();
+		}
+		else
+			++frame_count;
+
+		sf::Sleep(sleep_time);
 	}
 }

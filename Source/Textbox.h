@@ -21,8 +21,8 @@ misrepresented as being the original software.
 distribution.
 */
 
-#ifndef _TEXTBOX_H_
-#define _TEXTBOX_H_
+#ifndef WII_BNR_TEXTBOX_H_
+#define WII_BNR_TEXTBOX_H_
 
 #include "Pane.h"
 
@@ -32,21 +32,25 @@ namespace WiiBanner
 class Textbox : public Pane
 {
 public:
-	Textbox(std::istream& file);
+	typedef Pane Base;
+	
+	static const u32 BINARY_MAGIC = 'txt1';
+
+	void Load(std::istream& file);
 
 private:
-    u16 text_buf_bytes;
-    u16 text_str_bytes;
+	void Draw(const Resources& resources, u8 render_alpha) const;
 
-    u16 material_index;
-    u16 font_index;
+	u16 material_index, font_index;
 
-    u8 text_position;
-    u8 text_alignment;
+	u8 text_position, text_alignment;
+    
+	GXColor colors[2];	// top and bottom apparently
 
-    u32 text_str_offset;
-    u32 colors[2];
-    float width, height, space_char, space_line;
+	float width, height;	// character width and height ?
+	float space_char, space_line;
+
+	std::wstring text;
 };
 
 }

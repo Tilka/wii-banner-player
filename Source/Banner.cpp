@@ -21,9 +21,11 @@ misrepresented as being the original software.
 distribution.
 */
 
-#include "WiiBanner.h"
+#include "Banner.h"
 
 #include "FileHandlerARC.h"
+
+#include <fstream>
 
 #include "LZ77.h"
 #include "Sound.h"
@@ -33,60 +35,38 @@ distribution.
 namespace WiiBanner
 {
 
-struct SectionHeader
+static enum BinaryMagic
 {
-	SectionHeader(std::istream& file)
-		: start(file.tellg())
-		, size(0)
-	{}
+	BINARY_MAGIC_U8_ARCHIVE = MAKE_FOURCC('U', 0xAA, '8', '-'),
 
-	FourCC magic;
-	u32 size;
-
-	std::streamoff start;
+	BINARY_MAGIC_ANIMATION = 'RLAN',
+	BINARY_MAGIC_PANE_ANIMATION_INFO = 'pai1'
 };
-
-// read a section header
-inline std::istream& operator>>(std::istream& lhs, SectionHeader& rhs)
-{
-	rhs.start = lhs.tellg();
-	lhs >> rhs.magic >> BE >> rhs.size;
-
-	return lhs;
-}
-
-// seek past a section
-inline std::istream& operator+=(std::istream& lhs, const SectionHeader& rhs)
-{
-	lhs.seekg(rhs.start + rhs.size, std::ios::beg);
-
-	return lhs;
-}
 
 // load keyframes from a brlan file
 // TODO: can put this function somewhere better :p
-FrameNumber LoadAnimators(std::istream& file, Layout& layout, FrameNumber frame_offset)
+FrameNumber LoadAnimators(std::istream& file, Layout& layout, u8 key_set)
 {
 	const std::streamoff file_start = file.tellg();
 
-	u16 frame_count; // number of frames
+	u16 frame_count;
 
 	// read header
-	FourCC magic; // "RLAN"
+	FourCC header_magic;
 	u16 endian; // always 0xFEFF
 	u16 version; // always 0x0008
 
-	file >> magic >> BE >> endian >> version;
+	file >> header_magic >> BE >> endian >> version;
 
-	if (magic != "RLAN"
+	if (header_magic != BINARY_MAGIC_ANIMATION
 		|| endian != 0xFEFF
 		|| version != 0x008
 		)
 		return 0;	// bad header
 
 
-	u32 file_size; // size of entire file including header
-	u16 offset; // offset to the first section, from start of file
+	u32 file_size;
+	u16 offset; // offset to the first section
 	u16 section_count;
 
 	file >> BE >> file_size >> offset >> section_count;
@@ -98,66 +78,49 @@ FrameNumber LoadAnimators(std::istream& file, Layout& layout, FrameNumber frame_
 	// seek to header of first section
 	file.seekg(file_start + offset, std::ios::beg);
 
-	// read each section
-	SectionHeader header(file);
-	while (section_count--)
+	ReadSections(file, section_count, [&](FourCC magic, std::streamoff section_start)
 	{
-		file += header;
-		file >> header;
-
-		if (header.magic == "pai1")
+		if (magic == BINARY_MAGIC_PANE_ANIMATION_INFO)
 		{
-			u8 flags;
-			u8 padding;
-			u16 timg_count; // ?
+			u8 loop; // ?
+			u8 pad;
+			u16 file_count; // ?
 			u16 animator_count;
 			u32 entry_offset;
 
-			file >> BE >> frame_count >> flags
-				>> padding >> timg_count >> animator_count;
-
-			// extra padding if bit 25 is set, idk why
-			// TODO: never true
-			if (flags & (1 << 25))
-			{
-				//file.seekg(4);
-
-				float pad;
-				file >> BE >> pad;
-				std::cout << "pad: " << pad << '\n';
-			}
+			file >> BE >> frame_count >> loop
+				>> pad >> file_count >> animator_count;
 
 			file >> BE >> entry_offset;
-			file.seekg(header.start + entry_offset);
+			file.seekg(section_start + entry_offset);
 
 			// read each animator
-			ReadOffsetList(file, animator_count, header.start, [&]()
+			ReadOffsetList<u32>(file, animator_count, section_start, [&]
 			{
 				const std::streamoff origin = file.tellg();
 
-				char animator_name[21] = {};	// this name must be defined in the brlyt file
-				file.read(animator_name, 20);
+				const std::string animator_name = ReadFixedLengthString<Animator::NAME_LENGTH>(file);
 
 				u8 tag_count;
 				u8 is_material;
-				u16 offset;
+				u16 pad;
 
-				file >> BE >> tag_count >> is_material >> offset;
+				file >> BE >> tag_count >> is_material >> pad;
 
 				Animator* const animator = is_material ?
 					static_cast<Animator*>(layout.FindMaterial(animator_name)) :
 					static_cast<Animator*>(layout.FindPane(animator_name));
 
 				if (animator)
-					animator->LoadKeyFrames(file, tag_count, origin, frame_offset);
+					animator->LoadKeyFrames(file, tag_count, origin, key_set);
 			});
 		}
 		else
 		{
 			std::cout << "UNKNOWN SECTION: ";
-			std::cout.write((char*)header.magic.data, 4) << '\n';
+			std::cout << magic << '\n';
 		}
-	}
+	});
 
 	return frame_count;
 }
@@ -165,6 +128,7 @@ FrameNumber LoadAnimators(std::istream& file, Layout& layout, FrameNumber frame_
 Banner::Banner(const std::string& filename)
 	: layout_banner(nullptr)
 	, layout_icon(nullptr)
+	, sound(nullptr)
 {
 	std::ifstream bnr_file(filename, std::ios::binary | std::ios::in);
 
@@ -177,13 +141,13 @@ Banner::Banner(const std::string& filename)
 	// lets see if this is an opening.bnr
 	FourCC magic;
 	bnr_file >> magic;
-	if (magic != "Uª8-")
+	if (magic != BINARY_MAGIC_U8_ARCHIVE)
 	{
 		// lets see if it's a 00000000.app
 		bnr_file.seekg(60, std::ios::cur);
 		bnr_file >> magic;
 
-		if (magic != "Uª8-")
+		if (magic != BINARY_MAGIC_U8_ARCHIVE)
 			return;	// not a 00000000.app either
 
 		header_bytes = 0x640;
@@ -214,24 +178,45 @@ Banner::Banner(const std::string& filename)
 
 		DiscIO::CARCFile bin_arc(file);
 		const auto brlyt_offset = bin_arc.GetFileOffset("arc/blyt/" + lyt_name + ".brlyt");
-		std::cout << lyt_name << ".brlyt offset is: " << brlyt_offset << '\n';
+		//std::cout << lyt_name << ".brlyt offset is: " << brlyt_offset << '\n';
 
 		if (0 == brlyt_offset)
 			return nullptr;
 
 		file.seekg(brlyt_offset, std::ios::beg);
-		auto* const layout = new Layout(file);
+		auto* const layout = new Layout;
+		layout->Load(file);
 
 		// load textures
-		ForEach(layout->textures, [&](Texture* texture)
+		ForEach(layout->resources.textures, [&](Texture* texture)
 		{
-			auto const texture_offset = bin_arc.GetFileOffset("arc/timg/" + texture->name);
+			auto const texture_offset = bin_arc.GetFileOffset("arc/timg/" + texture->GetName());
 			if (texture_offset)
 			{
 				file.seekg(texture_offset, std::ios::beg);
 				texture->Load(file);
 			}
 		});
+
+		// load fonts
+		{
+		// this guy is in "User\Wii\shared1"
+		std::ifstream font_file("00000003.app", std::ios::binary | std::ios::in);
+		DiscIO::CARCFile font_arc(font_file);
+
+		ForEach(layout->resources.fonts, [&](Font* font)
+		{
+			auto const font_offset = font_arc.GetFileOffset(font->GetName());
+
+			if (font_offset)
+			{
+				font_file.seekg(font_offset, std::ios::beg);
+				font->Load(font_file);
+
+				//std::cout << "font name: " << font->name << '\n';
+			}
+		});
+		}
 
 		FrameNumber length_start = 0, length_loop = 0;
 
@@ -257,16 +242,13 @@ Banner::Banner(const std::string& filename)
 		if (brlan_loop_offset)
 		{
 			file.seekg(brlan_loop_offset, std::ios::beg);
-			length_loop = LoadAnimators(file, *layout, length_start);
+			length_loop = LoadAnimators(file, *layout, 1);
 		}
 
 		layout->SetLoopStart(length_start);
 		layout->SetLoopEnd(length_start + length_loop);
 		// update everything for frame 0
 		layout->SetFrame(0);
-
-		// TODO: remove hardcoded language
-		layout->SetLanguage("ENG");
 
 		return layout;
 	};
@@ -277,19 +259,26 @@ Banner::Banner(const std::string& filename)
 	// AUDIO!!
 
 	// This is probably the wrong way to do it anyways. Should just
-	// read the filesystem and parse what's available. Also, things aren't
-	// necessarily in LZ77
+	// read the filesystem and parse what's available.
 	const auto sound_offset = opening_arc.GetFileOffset("meta/sound.bin");
-	std::cout << "sound.bin offset is: " << sound_offset << '\n';
+	//std::cout << "sound.bin offset is: " << sound_offset << '\n';
 
-	bnr_file.seekg(header_bytes + sound_offset, std::ios::beg);
-	sound.Open(bnr_file);
+	if (sound_offset)
+	{
+		bnr_file.seekg(header_bytes + sound_offset, std::ios::beg);
+		auto* const s = new BannerStream;
+		if (s->Load(bnr_file))
+			sound = s;
+		else
+			delete s;
+	}
 }
 
 Banner::~Banner()
 {
 	delete layout_banner;
 	delete layout_icon;
+	delete sound;
 }
 
 }

@@ -21,8 +21,8 @@ misrepresented as being the original software.
 distribution.
 */
 
-#ifndef _MATERIAL_H_
-#define _MATERIAL_H_
+#ifndef WII_BNR_MATERIAL_H_
+#define WII_BNR_MATERIAL_H_
 
 #include "Types.h"
 
@@ -39,47 +39,44 @@ class Material : public Animator
 public:
 	typedef Animator Base;
 
-	Material(std::istream& file, const std::vector<Texture*>& textures);
+	enum
+	{
+		NAME_LENGTH = 20
+	};
 
-	void Apply() const;
+	void Load(std::istream& file);
 
-private:
+	void Apply(const TextureList& textures) const;
+
+protected:
 	void ProcessHermiteKey(const KeyType& type, float value);
 	void ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data);
 
+private:
 	struct TextureMap
 	{
 		u16 tex_index;
 		u8 wrap_s, wrap_t;
 	};
-
 	std::vector<TextureMap> texture_maps;
-
-	const std::vector<Texture*>& textures;
 
 	struct TextureCoordGen
 	{
 		u8 tgen_type, tgen_src, mtrx_src;
 	};
-
 	std::vector<TextureCoordGen> texture_coord_gens;
 
 	struct TextureSrt
 	{
 		TextureSrt()
 		{
-			translate.x = translate.y = scale.x = scale.y = 1.f;
-			rotate = 0;
+			translate.x = translate.y = rotate = 0.f;
+			scale.x = scale.y = 1.f;
 		}
 
-		struct
-		{
-			float x, y;
-		} translate, scale;
-
+		Vec2 translate, scale;
 		float rotate;
 	};
-
 	std::vector<TextureSrt> texture_srts;
 
 	struct
@@ -90,7 +87,7 @@ private:
 
 	struct
 	{
-		u8 function, aop, ref0, ref1;
+		u8 function, op, ref0, ref1;
 
 	} alpha_compare;
 
@@ -100,81 +97,80 @@ private:
 
 		struct
 		{
-			u8 red : 2;
-			u8 green : 2;
-			u8 blue : 2;
-			u8 alpha : 2;
+			u8 r : 2;
+			u8 g : 2;
+			u8 b : 2;
+			u8 a : 2;
 		};
 
-	} tev_swap_mode[4];
+	} tev_swap_table[4];
 
-	struct TevStage
+	union TevStage
 	{
-		u8 texcoord;
+		char data[0x10];
 
-		u8 color;
-
-		u16 texmap : 9;
-		u16 ras_sel : 2;
-		u16 tex_sel : 2;
-		u16 empty1 : 3;
-
-		u8 aC : 4;
-		u8 bC : 4;
-
-		u8 cC : 4;
-		u8 dC : 4;
-
-		u8 tevscaleC : 2;
-		u8 tevbiasC : 2;
-		u8 tevopC : 4;
-
-		u8 clampC : 1;
-		u8 tevregidC : 2;
-		u8 selC : 5;
-
-		u8 aA : 4;
-		u8 bA : 4;
-
-		u8 cA : 4;
-		u8 dA : 4;
-
-		u8 tevscaleA : 2;
-		u8 tevbiasA : 2;
-		u8 tevopA : 4;
-
-		u8 clampA : 1;
-		u8 tevregidA : 2;
-		u8 selA : 5;
-
-		u8 indtexid;
-
-		u8 bias : 3;
-		u8 mtxid : 4;
-		u8 empty2 : 1;
-
-		u8 wrap_s : 3;
-		u8 wrap_t : 3;
-		u8 empty3 : 2;
-
-		u8 format : 2;
-		u8 addprev : 1;
-		u8 utclod : 1;
-		u8 aIND : 2;
-		u8 empty4 : 2;
-
-		bool operator<(const TevStage& rhs) const
+		struct
 		{
-			return memcmp(this, &rhs, sizeof(*this)) < 0;
-		}
-	};
+			u8 tex_coord;
+			u8 color;
+			
+			u16 tex_map : 9;
+			u16 ras_sel : 2;
+			u16 tex_sel : 2;
+			u16 empty1 : 3;
 
+			struct
+			{
+				u8 a : 4;
+				u8 b : 4;
+
+				u8 c : 4;
+				u8 d : 4;
+
+				u8 op : 4;
+				u8 bias: 2;
+				u8 scale : 2;
+
+				u8 clamp : 1;
+				u8 reg_id : 2;
+				u8 constant_sel : 5;
+
+			} color_in, alpha_in;
+
+			struct
+			{
+				u8 tex_id : 2;
+				u8 empty1 : 6;
+
+				u8 bias : 3;
+				u8 mtx : 4;
+				u8 empty2 : 1;
+
+				u8 wrap_s : 3;
+				u8 wrap_t : 3;
+				u8 empty3 : 2;
+
+				u8 format : 2;
+				u8 add_prev : 1;
+				u8 utc_lod : 1;
+				u8 alpha : 2;
+				u8 empty4 : 2;
+			
+			} ind;
+		};
+	};
 	std::vector<TevStage> tev_stages;
 
-	u8 color[4];
+	GXColor color;	// TODO: where is "color" used?
 
 	GXColorS10 color_regs[3];
-	u8 color_constants[4][4];
+	GXColor color_constants[4];
+};
+
+class MaterialList : public std::vector<Material*>
+{
+public:
+	static const u32 BINARY_MAGIC = 'mat1';
 };
 
 }

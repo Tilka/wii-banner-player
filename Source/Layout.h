@@ -21,8 +21,8 @@ misrepresented as being the original software.
 distribution.
 */
 
-#ifndef _LAYOUT_H_
-#define _LAYOUT_H_
+#ifndef WII_BNR_LAYOUT_H_
+#define WII_BNR_LAYOUT_H_
 
 #include "Pane.h"
 #include "Material.h"
@@ -31,9 +31,6 @@ distribution.
 
 #include "Types.h"
 
-// TODO: i would like to remove this dependency in this file
-#include "FileHandlerARC.h"
-
 #include <map>
 #include <list>
 #include <vector>
@@ -41,13 +38,22 @@ distribution.
 namespace WiiBanner
 {
 
+struct Resources
+{
+	MaterialList materials;
+	TextureList textures;
+	FontList fonts;
+};
+
 class Layout
 {
 public:
-	Layout(std::istream& file);
+	static const u32 BINARY_MAGIC = 'lyt1';
+
+	void Load(std::istream& file);
 	~Layout();
 
-	void Render() const;
+	void Render() /*const*/;
 
 	FrameNumber GetFrame() const { return frame_current; }
 	void SetFrame(FrameNumber frame_number);
@@ -64,21 +70,27 @@ public:
 	Pane* FindPane(const std::string& name);
 	Material* FindMaterial(const std::string& name);
 
-//private:
+	// TODO: make private?
+	Resources resources;
+
+	// TODO: move outside of Layout?
 	struct Group
 	{
+		static const u32 BINARY_MAGIC = 'grp1';
+
+		enum
+		{
+			NAME_LENGTH = 0x10
+		};
+
 		std::map<std::string, Group> groups;
 		std::list<std::string> panes;
 	};
 
-	std::vector<Pane*> panes;
-	std::vector<Material*> materials;
-	std::vector<Texture*> textures;
-	std::vector<Font*> fonts;
+private:
+	PaneList panes;
 
 	std::map<std::string, Group> groups;
-
-private:
 
 	FrameNumber frame_current, frame_loop_start, frame_loop_end;
 

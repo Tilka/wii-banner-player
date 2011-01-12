@@ -21,46 +21,24 @@ misrepresented as being the original software.
 distribution.
 */
 
-#ifndef _PICTURE_H_
-#define _PICTURE_H_
+#ifndef WII_BNR_PICTURE_H_
+#define WII_BNR_PICTURE_H_
 
 #include "Pane.h"
-#include "Material.h"
 
 #include <vector>
 
 namespace WiiBanner
 {
 
-class Picture : public Pane
+class Picture : public Quad
 {
 public:
-	typedef Pane Base;
+	typedef Quad Base;
 
-	Picture(std::istream& file, const std::vector<Material*>& materials);
+	static const u32 BINARY_MAGIC = 'pic1';
 
-protected:
-	const Material* material;
-	
-	struct TexCoords
-	{
-		struct
-		{
-			float s, t;
-
-		} coords[4];
-	};
-
-	std::vector<TexCoords> tex_coords;
-
-	u8 vertex_colors[4][4];
-
-	u16 mat_index;
-
-private:
-	void Draw(u8 render_alpha) const;
-
-	void ProcessHermiteKey(const KeyType& type, float value);
+	void Load(std::istream& file);
 };
 
 }

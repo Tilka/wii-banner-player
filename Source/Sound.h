@@ -21,8 +21,8 @@ misrepresented as being the original software.
 distribution.
 */
 
-#ifndef _SOUND_H_
-#define _SOUND_H_
+#ifndef WII_BNR_SOUND_H_
+#define WII_BNR_SOUND_H_
 
 #include <sstream>
 #include <SFML/Audio.hpp>
@@ -35,7 +35,11 @@ class BannerStream : public sf::SoundStream
 public:
 	BannerStream() : position(0), loop_position(-1) {}
 
-	bool Open(std::istream& in);
+	~BannerStream() { Stop(); }	// TODO: this is probably already done by sf::SoundStream
+
+	bool Load(std::istream& in);
+
+	void Restart() { Stop(); position = 0; }
 
 private:
 	virtual bool OnStart();

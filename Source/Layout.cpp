@@ -24,6 +24,7 @@ distribution.
 #include "Layout.h"
 #include "Picture.h"
 #include "Textbox.h"
+#include "Window.h"
 
 #include <stack>
 
@@ -32,85 +33,50 @@ distribution.
 namespace WiiBanner
 {
 
-struct SectionHeader
+static enum BinaryMagic
 {
-	SectionHeader(std::istream& file)
-		: start(file.tellg()), size(0)
-	{}
+	BINARY_MAGIC_LAYOUT = 'RLYT',
 
-	FourCC magic;
-	u32 size;
-
-	std::streamoff start;
+	BINARY_MAGIC_PANE_PUSH = 'pas1',
+	BINARY_MAGIC_PANE_POP = 'pae1',
+	BINARY_MAGIC_GROUP_PUSH = 'grs1',
+	BINARY_MAGIC_GROUP_POP = 'gre1'
 };
 
-// read a section header
-inline std::istream& operator>>(std::istream& lhs, SectionHeader& rhs)
+template <typename P>
+Pane* LoadNewPane(std::istream& file)
 {
-	rhs.start = lhs.tellg();
-	lhs >> rhs.magic >> BE >> rhs.size;
-
-	return lhs;
+	P* const pane = new P;
+	pane->Load(file);
+	return pane;
 }
 
-// seek past a section
-inline std::istream& operator+=(std::istream& lhs, const SectionHeader& rhs)
-{
-	lhs.seekg(rhs.start + rhs.size, std::ios::beg);
-
-	return lhs;
-}
-
-template <typename F>
-void ReadOffsetList(std::istream& file, u32 count, std::streamoff origin, F func, std::streamoff pad = 0)
-{
-	std::streamoff next_offset = file.tellg();
-
-	while (count--)
-	{
-		file.seekg(next_offset, std::ios::beg);
-
-		u32 offset;
-		file >> BE >> offset;
-		file.seekg(pad, std::ios::cur);
-
-		next_offset = file.tellg();
-
-		file.seekg(origin + offset, std::ios::beg);
-		func();
-	}
-}
-
-Layout::Layout(std::istream& file)
-	: frame_current(0)
-	, frame_loop_start(0)
-	, frame_loop_end(0)
-	, width(0), height(0)
-	, centered(0)
+void Layout::Load(std::istream& file)
 {
 	const std::streamoff file_start = file.tellg();
 
+	frame_current = frame_loop_start = frame_loop_end = 0.f;
+	width = height = 0.f;
+	centered = 0;
+
 	// read header
-	FourCC magic; // RLYT
-	u16 endian; // 0xFEFF
-	u16 version; // 0x0008
+	FourCC header_magic;
+	u16 endian;
+	u16 version;
 	u32 filesize;
 	u16 offset; // offset to first section
 	u16 section_count;
 
-	file >> magic >> BE >> endian >> version
+	file >> header_magic >> BE >> endian >> version
 		>> filesize >> offset >> section_count;
 
-	if (magic != "RLYT"
+	if (header_magic != BINARY_MAGIC_LAYOUT
 		|| endian != 0xFEFF
-		|| version != 0x008
+		|| version != 0x0008
 		)
 		return;	// bad header
 
-	// temporary maps and stacks
-	std::map<std::string, Pane*> pane_animator_map;
-	std::map<std::string, Material*> mate_animator_map;
-
+	// temporary stacks
 	Group* last_group = nullptr;
 	std::stack<std::map<std::string, Group>*> group_stack;
 	group_stack.push(&groups);
@@ -119,24 +85,24 @@ Layout::Layout(std::istream& file)
 	std::stack<std::vector<Pane*>*> pane_stack;
 	pane_stack.push(&panes);
 
+	auto const add_pane = [&](Pane* pane)
+	{
+		pane_stack.top()->push_back(last_pane = pane);
+	};
+
 	// seek to the first section
 	file.seekg(file_start + offset, std::ios::beg);
 
-	// read each section
-	SectionHeader header(file);
-	while (section_count--)
+	ReadSections(file, section_count, [&](FourCC magic, std::streamoff section_start)
 	{
-		file += header;
-		file >> header;
-
-		if (header.magic == "lyt1")
+		if (magic == Layout::BINARY_MAGIC)
 		{
 			// read layout
 			file >> BE >> centered;
 			file.seekg(3, std::ios::cur);
 			file >> BE >> width >> height;
 		}
-		else if (header.magic == "txl1")
+		else if (magic == TextureList::BINARY_MAGIC)
 		{
 			// load texture list
 			u16 texture_count;
@@ -144,18 +110,18 @@ Layout::Layout(std::istream& file)
 
 			file >> BE >> texture_count >> offset;
 
-			ReadOffsetList(file, texture_count, file.tellg(), [&]
+			ReadOffsetList<u32>(file, texture_count, file.tellg(), [&]
 			{
 				auto* const texture = new Texture;
-				std::getline(file, texture->name, '\0');
+				texture->SetName(ReadNullTerminatedString(file));
 
-				textures.push_back(texture);
+				resources.textures.push_back(texture);
 
 			}, 4);
 
-			std::cout << "Loaded " << textures.size() << " Textures\n";
+			std::cout << "Loaded " << resources.textures.size() << " Textures\n";
 		}
-		else if (header.magic == "fnl1")
+		else if (magic == FontList::BINARY_MAGIC)
 		{
 			// load font list
 			u16 font_count;
@@ -163,62 +129,67 @@ Layout::Layout(std::istream& file)
 
 			file >> BE >> font_count >> offset;
 
-			ReadOffsetList(file, font_count, file.tellg(), [&]
+			ReadOffsetList<u32>(file, font_count, file.tellg(), [&]
 			{
 				auto* const font = new Font;
-				std::getline(file, font->name, '\0');
+				font->SetName(ReadNullTerminatedString(file));
 
-				fonts.push_back(font);
+				resources.fonts.push_back(font);
 
 			}, 4);
 
-			std::cout << "Loaded " << textures.size() << " Fonts\n";
+			std::cout << "Loaded " << resources.fonts.size() << " Fonts\n";
 		}
-		else if (header.magic == "mat1")
+		else if (magic == MaterialList::BINARY_MAGIC)
 		{
 			// load materials
-			u16 material_count; // num materials
-			u16 offset; // Offset to list start. Always zero
+			u16 material_count;
+			u16 offset;
 
 			file >> BE >> material_count >> offset;
 
-			ReadOffsetList(file, material_count, header.start, [&]
+			ReadOffsetList<u32>(file, material_count, section_start, [&]
 			{
-				Material* const mate = new Material(file, textures);
-				materials.push_back(mate);
-				mate_animator_map[materials.back()->name] = mate;
+				Material* const mat = new Material;
+				mat->Load(file);
+				resources.materials.push_back(mat);
 			});
 
-			std::cout << "Loaded " << materials.size() << " Materials\n";
+			std::cout << "Loaded " << resources.materials.size() << " Materials\n";
 		}
-		else if (header.magic == "pic1")
+		else if (magic == Pane::BINARY_MAGIC)
 		{
-			Picture* const pic = new Picture(file, materials);
-			pane_stack.top()->push_back(last_pane = pic);
-			pane_animator_map[pic->name] = pic;
+			add_pane(LoadNewPane<Pane>(file));
 		}
-		// TODO: these "bnd1" sections seem to tell the wii the viewport for different screen sizes
-		else if (header.magic == "pan1"/* || header.magic == "bnd1"*/)
+		else if (magic == Bounding::BINARY_MAGIC)
 		{
-			pane_stack.top()->push_back(last_pane = new Pane(file));
-			pane_animator_map[last_pane->name] = last_pane;
+			add_pane(LoadNewPane<Bounding>(file));
 		}
-		else if (header.magic == "pas1")
+		else if (magic == Picture::BINARY_MAGIC)
+		{
+			add_pane(LoadNewPane<Picture>(file));
+		}
+		else if (magic == Window::BINARY_MAGIC)
+		{
+			add_pane(LoadNewPane<Window>(file));
+		}
+		else if (magic == Textbox::BINARY_MAGIC)
+		{
+			add_pane(LoadNewPane<Textbox>(file));
+		}
+		else if (magic == BINARY_MAGIC_PANE_PUSH)
 		{
 			if (last_pane)
 				pane_stack.push(&last_pane->panes);
 		}
-		else if (header.magic == "pae1")
+		else if (magic == BINARY_MAGIC_PANE_POP)
 		{
 			if (pane_stack.size() > 1)
 				pane_stack.pop();
 		}
-		else if (header.magic == "grp1")
+		else if (magic == Layout::Group::BINARY_MAGIC)
 		{
-			char read_name[0x11] = {};
-			file.read(read_name, 0x10);
-
-			Group& group_ref = (*group_stack.top())[read_name];
+			Group& group_ref = (*group_stack.top())[ReadFixedLengthString<Layout::Group::NAME_LENGTH>(file)];
 
 			u16 sub_count;
 			file >> BE >> sub_count;
@@ -226,35 +197,27 @@ Layout::Layout(std::istream& file)
 
 			while (sub_count--)
 			{
-				char read_name[0x11];
-				file.read(read_name, 0x10);
-				group_ref.panes.push_back(read_name);
+				group_ref.panes.push_back(ReadFixedLengthString<Pane::NAME_LENGTH>(file));
 			}
 
 			last_group = &group_ref;
 		}
-		else if (header.magic == "grs1")
+		else if (magic == BINARY_MAGIC_GROUP_PUSH)
 		{
 			if (last_group)
 				group_stack.push(&last_group->groups);
 		}
-		else if (header.magic == "gre1")
+		else if (magic == BINARY_MAGIC_GROUP_POP)
 		{
 			if (group_stack.size() > 1)
 				group_stack.pop();
 		}
-		else if (header.magic == "txt1")
-		{
-			pane_stack.top()->push_back(last_pane = new Textbox(file));
-			pane_animator_map[last_pane->name] = last_pane;
-		}
 		else
 		{
 			std::cout << "UNKNOWN SECTION: ";
-			std::cout.write((char*)header.magic.data, 4) << '\n';
-			//std::cin.get();
+			std::cout << magic << '\n';
 		}
-	}
+	});
 }
 
 Layout::~Layout()
@@ -264,30 +227,50 @@ Layout::~Layout()
 		delete pane;
 	});
 
-	ForEach(materials, [](Material* material)
+	ForEach(resources.materials, [](Material* material)
 	{
 		delete material;
 	});
 
-	ForEach(textures, [](Texture* texture)
+	ForEach(resources.textures, [](Texture* texture)
 	{
 		delete texture;
 	});
+
+	ForEach(resources.fonts, [](Font* font)
+	{
+		delete font;
+	});
 }
 
-void Layout::Render() const
+void Layout::Render() /*const*/
 {
 	glLoadIdentity();
 
-	glOrtho(-width, 0, -height, 0, -1000.f, 1000.f);
+	float l, r, b, t;
 
-	if (centered)
-		glTranslatef(-width / 2, -height / 2, 0.f);
+	l = centered * -width / 2;
+	r = width * centered / 2;
 
-	// usually there is only one root pane, probably always
+	b = centered * -height / 2;
+	t = height * centered / 2;
+
+	// an attempt to crop
+#if 0
+	const float x = (l + r) / 2, y = (b + t) / 2;
+
+	l = x - (576 - 288);
+	r = x + 288;
+
+	b = y - (324 - 217);
+	t = y + 217;
+#endif
+
+	glOrtho(l, r, b, t, -1000.f, 1000.f);
+
 	ForEach(panes, [&](Pane* pane)
 	{
-		pane->Render(0xff, 1.f, 1.f);	// fully opaque
+		pane->Render(resources, 0xff, 1.f, 1.f);	// fully opaque
 	});
 }
 
@@ -295,14 +278,18 @@ void Layout::SetFrame(FrameNumber frame_number)
 {
 	frame_current = frame_number;
 
+	const u8 key_set = (frame_current >= frame_loop_start);
+	if (key_set)
+		frame_number -= frame_loop_start;
+
 	ForEach(panes, [&](Pane* pane)
 	{
-		pane->SetFrame(frame_number);
+		pane->SetFrame(frame_number, key_set);
 	});
 
-	ForEach(materials, [&](Material* material)
+	ForEach(resources.materials, [&](Material* material)
 	{
-		material->SetFrame(frame_number);
+		material->SetFrame(frame_number, key_set);
 	});
 }
 
@@ -319,7 +306,7 @@ void Layout::AdvanceFrame()
 
 void Layout::SetLanguage(const std::string& language)
 {
-	// TODO: i'd like an empty language to unhide everything
+	// TODO: i'd like an empty language to unhide everything, maybe
 
 	// hide panes of non-matching languages
 	ForEach(groups["RootGroup"].groups, [&language, this](const std::pair<const std::string&, const Group&> group)
@@ -363,9 +350,9 @@ Material* Layout::FindMaterial(const std::string& find_name)
 {
 	Material* found = nullptr;
 
-	ForEach(materials, [&](Material* material)
+	ForEach(resources.materials, [&](Material* material)
 	{
-		if (!found && find_name == material->name)
+		if (!found && find_name == material->GetName())
 			found = material;	// TODO: oh noes, can't break out of this lambda loop
 	});
 

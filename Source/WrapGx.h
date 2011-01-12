@@ -21,8 +21,8 @@ misrepresented as being the original software.
 distribution.
 */
 
-#ifndef _WRAP_GX_
-#define _WRAP_GX_
+#ifndef WII_BNR_WRAP_GX_
+#define WII_BNR_WRAP_GX_
 
 #include "CommonTypes.h"
 

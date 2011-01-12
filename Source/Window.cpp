@@ -21,17 +21,51 @@ misrepresented as being the original software.
 distribution.
 */
 
-#include "Picture.h"
+#include "Window.h"
 
 #include <gl/glew.h>
 
 namespace WiiBanner
 {
 
-void Picture::Load(std::istream& file)
+void Window::Load(std::istream& file)
 {
+	const std::streamoff section_start = file.tellg() - (std::streamoff)8;	// 8 being size of section header :/
+
 	Pane::Load(file);
+
+	file >> BE >> inflation.l >> inflation.r >> inflation.t >> inflation.b;
+
+	u8 frame_count;
+
+	file >> BE >> frame_count;
+	file.seekg(3, std::ios::cur);
+
+	u32 content_offset, frame_table_offset;
+
+	file >> BE >> content_offset >> frame_table_offset;
+
+	// read content
+	file.seekg(section_start + content_offset, std::ios::beg);
 	Quad::Load(file);
+
+	// read frames
+	file.seekg(section_start + frame_table_offset, std::ios::beg);
+	ReadOffsetList<u32>(file, frame_count, file.tellg(), [&]
+	{
+		Frame frame;
+		file >> BE >> frame.material_index >> frame.texture_flip;
+
+		frames.push_back(frame);
+	});
+}
+
+void Window::Draw(const Resources& resources, u8 render_alpha) const
+{
+	// TODO: handle "inflation"
+	// TODO: handle "frames" and "texture_flip"
+
+	Quad::Draw(resources, render_alpha);
 }
 
 }

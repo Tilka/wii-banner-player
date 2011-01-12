@@ -21,12 +21,18 @@ misrepresented as being the original software.
 distribution.
 */
 
-#ifndef _LZ77_H_
-#define _LZ77_H_
+#ifndef WII_BNR_LZ77_H_
+#define WII_BNR_LZ77_H_
 
 #include "CommonTypes.h"
+#include "Endian.h"
 
 #include <sstream>
+
+static enum
+{
+	BINARY_MAGIC_LZ77 = 'LZ77'
+};
 
 class LZ77Decompressor
 {
@@ -35,10 +41,10 @@ public:
 	{
 		const u32 TYPE_LZ77 = 1;
 
-		char magic[4];
-		in.read(magic, 4);
+		u32 magic;
+		in >> BE >> magic;
 
-		if (memcmp(magic, "LZ77", 4))
+		if (magic != BINARY_MAGIC_LZ77)
 		{
 			// LZ77 header not present
 			in.seekg(-4, std::ios::cur);
@@ -49,7 +55,7 @@ public:
 		ret_stream = &data;
 
 		u32 hdr;
-		in.read((char*)&hdr, sizeof(hdr));
+		in >> LE >> hdr;
 
 		const u32 uncompressed_length = hdr >> 8;
 		const u32 compression_type = hdr >> 4 & 0xf;
@@ -66,7 +72,7 @@ public:
 				if (flags & 0x80)
 				{
 					u16 info;
-					in.read((char*)&info, sizeof(info));
+					in >> LE >> info;
 					info = Common::swap16(info);
 
 					const u8 num = 3 + (info >> 12);

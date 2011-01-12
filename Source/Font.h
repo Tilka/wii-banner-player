@@ -21,18 +21,46 @@ misrepresented as being the original software.
 distribution.
 */
 
-#ifndef _FONT_H_
-#define _FONT_H_
+#ifndef WII_BNR_FONT_H_
+#define WII_BNR_FONT_H_
+
+#include "Types.h"
+
+#include "WrapGx.h"
 
 #include <string>
+#include <list>
+#include <vector>
 
 namespace WiiBanner
 {
 
-class Font
+class Font : public Named
 {
 public:
-	std::string name;
+	void Load(std::istream& file);
+
+	void Apply() const;
+
+private:
+	struct CodeMap
+	{
+		u16 ccode_begin;
+		u16 ccode_end;
+		u16 mapping_method;
+
+		u32 pNext;
+		//u16 map_info[];
+	};
+	std::list<CodeMap> code_maps;
+
+	GXTexObj texobj;
+};
+
+class FontList : public std::vector<Font*>
+{
+public:
+	static const u32 BINARY_MAGIC = 'fnl1';
 };
 
 }

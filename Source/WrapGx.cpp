@@ -36,22 +36,17 @@ distribution.
 
 #include "Types.h"
 
-static u8 g_texture_decode_buffer[512 * 512 * 4];
+static u8 g_texture_decode_buffer[1024 * 1024 * 4];
 
 static float g_color_registers[3][4];
 
+// TODO: make this 0, currently causes issues though, figure that out :p
 static const GLuint g_texmap_start_index = 1;
-static const GLuint g_framebuffer_index = 0;
-static GLuint g_framebuffer_texture;
 
 // silly
 GXFifoObj * 	GX_Init (void *base, u32 size)
 {
 	glewInit();
-
-	glGenTextures(1, &g_framebuffer_texture);
-	glBindTexture(GL_TEXTURE_2D, g_framebuffer_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 608, 456, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
 	return nullptr;
 }
@@ -65,13 +60,9 @@ struct GLTexObj
 // TODO: doesn't handle mipmap or maxlod
 u32 	GX_GetTexBufferSize (u16 wd, u16 ht, u32 fmt, u8 mipmap, u8 maxlod)
 {
-	const u32 bsw = TexDecoder_GetBlockWidthInTexels(fmt) - 1;
-	const u32 bsh = TexDecoder_GetBlockHeightInTexels(fmt) - 1;
-
-	const u32 expanded_width  = (wd + bsw) & (~bsw);
-	const u32 expanded_height = (ht + bsh) & (~bsh);
-
-	return TexDecoder_GetTextureSizeInBytes(expanded_width, expanded_height, fmt);
+	return TexDecoder_GetTextureSizeInBytes(
+		RoundUp(wd, TexDecoder_GetBlockWidthInTexels(fmt)),
+		RoundUp(ht, TexDecoder_GetBlockHeightInTexels(fmt)), fmt);
 }
 
 // silly
@@ -87,14 +78,14 @@ u8 g_tlut_names[1];
 
 void 	GX_InitTexObjTlut (GXTexObj *obj, u32 tlut_name)
 {
-	GLTexObj& txobj = *(GLTexObj*)obj;
+	GLTexObj& txobj = *reinterpret_cast<GLTexObj*>(obj);
 
 	txobj.tlutfmt = g_tlut_names[tlut_name];
 }
 
 void 	GX_InitTlutObj (GXTlutObj *obj, void *lut, u8 fmt, u16 entries)
 {
-	TlutObj& tlutobj = *(TlutObj*)obj;
+	TlutObj& tlutobj = *reinterpret_cast<TlutObj*>(obj);
 
 	tlutobj.lut = lut;
 	tlutobj.fmt = fmt;
@@ -103,7 +94,7 @@ void 	GX_InitTlutObj (GXTlutObj *obj, void *lut, u8 fmt, u16 entries)
 
 void 	GX_LoadTlut (GXTlutObj *obj, u32 tlut_name)
 {
-	TlutObj& tlutobj = *(TlutObj*)obj;
+	TlutObj& tlutobj = *reinterpret_cast<TlutObj*>(obj);
 
 	g_tlut_names[tlut_name] = tlutobj.fmt;
 
@@ -112,7 +103,7 @@ void 	GX_LoadTlut (GXTlutObj *obj, u32 tlut_name)
 
 void 	GX_InitTexObj (GXTexObj *obj, void *img_ptr, u16 wd, u16 ht, u8 fmt, u8 wrap_s, u8 wrap_t, u8 mipmap)
 {	
-	GLTexObj& txobj = *(GLTexObj*)obj;
+	GLTexObj& txobj = *reinterpret_cast<GLTexObj*>(obj);
 
 	// generate texture
 	glGenTextures(1, &txobj.tex);
@@ -140,7 +131,7 @@ void 	GX_InitTexObj (GXTexObj *obj, void *img_ptr, u16 wd, u16 ht, u8 fmt, u8 wr
 
 	// decode texture
 	auto const pcfmt = TexDecoder_Decode(g_texture_decode_buffer,
-		(u8*)img_ptr, expanded_width, expanded_height, fmt, 0, txobj.tlutfmt);
+		reinterpret_cast<u8*>(img_ptr), expanded_width, expanded_height, fmt, 0, txobj.tlutfmt);
 
 	// load texture
 	switch (pcfmt)
@@ -207,7 +198,7 @@ void 	GX_InitTexObj (GXTexObj *obj, void *img_ptr, u16 wd, u16 ht, u8 fmt, u8 wr
 
 void 	GX_InitTexObjWrapMode (GXTexObj *obj, u8 wrap_s, u8 wrap_t)
 {
-	GLTexObj& txobj = *(GLTexObj*)obj;
+	GLTexObj& txobj = *reinterpret_cast<GLTexObj*>(obj);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, txobj.tex);
@@ -226,7 +217,7 @@ void 	GX_InitTexObjWrapMode (GXTexObj *obj, u8 wrap_s, u8 wrap_t)
 
 void 	GX_InitTexObjFilterMode (GXTexObj *obj, u8 minfilt, u8 magfilt)
 {
-	GLTexObj& txobj = *(GLTexObj*)obj;
+	GLTexObj& txobj = *reinterpret_cast<GLTexObj*>(obj);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, txobj.tex);
@@ -403,11 +394,6 @@ void CompiledTevStages::Compile(const TevStages& stages)
 	// generate vertex/fragment shader code
 	{
 	std::ostringstream vert_ss;
-	
-	//for (unsigned int i = 0; i != sampler_count; ++i)
-		//vert_ss << "varying vec2 texcoords" << i << ';';
-
-	vert_ss << "varying vec2 position_fb" ";";
 
 	vert_ss << "void main(){";
 
@@ -418,8 +404,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 		vert_ss << "gl_TexCoord[" << i << "] = gl_TextureMatrix[" << i << "] * gl_MultiTexCoord" << 0 << ";";
 
 	vert_ss << "gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;";
-	//vert_ss << "position_fb = vec2(gl_Position.x * 0.5 + 0.5, gl_Position.y * 0.5 + 0.5);";
-	vert_ss << "position_fb = gl_Position.xy;";
+
 	vert_ss << '}';
 
 	// create/compile vertex shader
@@ -442,20 +427,13 @@ void CompiledTevStages::Compile(const TevStages& stages)
 	// uniforms
 	for (unsigned int i = 0; i != sampler_count; ++i)
 		frag_ss << "uniform sampler2D textures" << i << ';';
-	frag_ss << "uniform sampler2D texture_fb" ";";
 	frag_ss << "uniform vec4 registers[3]" ";";
-	frag_ss << "uniform vec4 color_constant" ";";
-
-	// these come from the vertex shader
-	frag_ss << "varying vec2 position_fb" ";";
-	//for (unsigned int i = 0; i != sampler_count; ++i)
-		//frag_ss << "varying vec2 texcoords" << i << ';';
+	//frag_ss << "uniform vec4 color_constant" ";";
+	frag_ss << "vec4 color_constant" ";";
 
 	frag_ss << "void main(){";
 
 	frag_ss << "vec4 color_previous" ";";
-	//frag_ss << "vec4 color_previous = vec4(0.0)" ";";
-	//frag_ss << "vec4 color_previous = texture2D(texture_fb, position_fb);";
 	frag_ss << "vec4 color_texture" ";";
 	for (unsigned int i = 0; i != 3; ++i)
 		frag_ss << "vec4 color_registers" << i << " = registers[" << i << "]" ";";
@@ -542,6 +520,8 @@ void CompiledTevStages::Compile(const TevStages& stages)
 
 			switch (tevop)
 			{
+				// TODO: should this be default
+			default:
 			case 0: // ADD
 			case 1: // SUB
 				frag_ss << "mix(a" << swiz << ", b" << swiz << ", c" << swiz << ")";
@@ -563,12 +543,11 @@ void CompiledTevStages::Compile(const TevStages& stages)
 				break;
 
 			// TODO:
-
-			//case 14: // COMP_RGB8_GT
-			//case 15: // COMP_RGB8_EQ
+			case 14: // COMP_RGB8_GT
+			case 15: // COMP_RGB8_EQ
 			//	break;
 			
-			default:
+			//default:
 				frag_ss << "(vec4(0.0))" << swiz;
 				std::cout << "Unsupported tevop!! " << (int)tevop << '\n';
 				break;
@@ -580,8 +559,13 @@ void CompiledTevStages::Compile(const TevStages& stages)
 		// TODO: could eliminate this result variable
 		frag_ss << "vec4 result;";
 
-		write_tevop(stage.color_op, ".rgb");
-		write_tevop(stage.alpha_op, ".a");
+		if (stage.color_op != stage.alpha_op)
+		{
+			write_tevop(stage.color_op, ".rgb");
+			write_tevop(stage.alpha_op, ".a");
+		}
+		else
+			write_tevop(stage.color_op, "");
 
 		// output register
 		frag_ss << output_registers[stage.color_regid] << ".rgb = result" ".rgb;";
@@ -650,8 +634,6 @@ void CompiledTevStages::Compile(const TevStages& stages)
 		glUniform1i(glGetUniformLocation(program, ss.str().c_str()), g_texmap_start_index + i);
 	}
 
-	glUniform1i(glGetUniformLocation(program, "texture_fb"), g_framebuffer_index);
-
 	// print log
 	{
 	GLchar infolog[10240] = {};
@@ -665,7 +647,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 
 void 	GX_LoadTexObj (GXTexObj *obj, u8 mapid)
 {
-	const GLTexObj& txobj = *(GLTexObj*)obj;
+	const GLTexObj& txobj = *reinterpret_cast<GLTexObj*>(obj);
 
 	glActiveTexture(GL_TEXTURE0 + g_texmap_start_index + mapid);
 	glBindTexture(GL_TEXTURE_2D, txobj.tex);
@@ -709,11 +691,15 @@ void 	GX_SetTevColorS10 (u8 tev_regid, GXColorS10 color)
 void 	GX_SetTevKAlphaSel (u8 tevstage, u8 sel)
 {
 	ActiveStage(tevstage);
+
+	// TODO:
 }
 
 void 	GX_SetTevKColorSel (u8 tevstage, u8 sel)
 {
 	ActiveStage(tevstage);
+
+	// TODO:
 }
 
 void 	GX_SetTevAlphaIn (u8 tevstage, u8 a, u8 b, u8 c, u8 d)
@@ -767,10 +753,4 @@ void 	GX_SetNumTevStages (u8 num)
 
 	// enable the program
 	comptevs.Enable();
-
-	// TODO: only do this when needed
-	glActiveTexture(GL_TEXTURE0 + g_framebuffer_index);
-	glBindTexture(GL_TEXTURE_2D, g_framebuffer_texture);
-	//glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, 608, 456, 0);
-	//std::cout << glGetError() << '\n';
 }

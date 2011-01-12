@@ -23,27 +23,23 @@ distribution.
 
 #include "Pane.h"
 
-#include <gl/gl.h>
+#include "Layout.h"
+
+#include <gl/glew.h>
 
 namespace WiiBanner
 {
 
-Pane::Pane(std::istream& file)
-	: hide(false)
+void Pane::Load(std::istream& file)
 {
-	file >> BE >> flags >> origin >> alpha;	// TODO: does a pane's alpha affect its children?
+	hide = false;
+
+	file >> BE >> flags >> origin >> alpha;
 	file.seekg(1, std::ios::cur);
 
-	{
-	char read_name[0x11] = {};
-	file.read(read_name, 0x10);
-	name = read_name;
-	}
+	SetName(ReadFixedLengthString<NAME_LENGTH>(file));
 
-	{
-	char user_data[0x09] = {}; // User data	// is it really user data there?
-	file.read(user_data, 0x08);
-	}
+	ReadFixedLengthString<USER_DATA_LENGTH>(file);	// user data
 
 	file >> BE
 		>> translate.x >> translate.y >> translate.z
@@ -61,24 +57,25 @@ Pane::~Pane()
 	});
 }
 
-void Pane::SetFrame(FrameNumber frame)
+void Pane::SetFrame(FrameNumber frame, u8 key_set)
 {
 	// setframe on self
-	Animator::SetFrame(frame);
+	Animator::SetFrame(frame, key_set);
 
 	// setframe on children
 	ForEach(panes, [&](Pane* pane)
 	{
-		pane->SetFrame(frame);
+		pane->SetFrame(frame, key_set);
 	});
 }
 
-void Pane::Render(u8 parent_alpha, float adjust_x, float adjust_y) const
+void Pane::Render(const Resources& resources, u8 parent_alpha, float adjust_x, float adjust_y) const
 {
-	if (!GetVisible() || hide)
+	if (!GetVisible() || GetHide())
 		return;
 
-	const u8 render_alpha = GetInfluencedAlpha() ? MultiplyColors(parent_alpha, alpha) : alpha;
+	// TODO: is this handled correctly?
+	const u8 render_alpha = GetInfluencedAlpha() ? MultiplyColors(parent_alpha, GetAlpha()) : GetAlpha();
 
 	glPushMatrix();
 
@@ -88,23 +85,23 @@ void Pane::Render(u8 parent_alpha, float adjust_x, float adjust_y) const
 		adjust_x = 1.f;
 		adjust_y = 1.f;
 	}
-	glTranslatef(translate.x * adjust_x, translate.y * adjust_y, translate.z);
+	glTranslatef(GetTranslate().x * adjust_x, GetTranslate().y * adjust_y, GetTranslate().z);
 
 	// rotate
-	glRotatef(rotate.x, 1.f, 0.f, 0.f);
-	glRotatef(rotate.y, 0.f, 1.f, 0.f);
-	glRotatef(rotate.z, 0.f, 0.f, 1.f);
+	glRotatef(GetRotate().x, 1.f, 0.f, 0.f);
+	glRotatef(GetRotate().y, 0.f, 1.f, 0.f);
+	glRotatef(GetRotate().z, 0.f, 0.f, 1.f);
 
 	// scale
-	glScalef(scale.x, scale.y, 1.f);
+	glScalef(GetScale().x, GetScale().y, 1.f);
 
 	// render self
-	Draw(render_alpha);
+	Draw(resources, render_alpha);
 
 	// render children
-	ForEach(panes, [=](const Pane* pane)
+	ForEach(panes, [&](const Pane* pane)
 	{
-		pane->Render(render_alpha, adjust_x, adjust_y);
+		pane->Render(resources, render_alpha, adjust_x, adjust_y);
 	});
 
 	glPopMatrix();
@@ -112,7 +109,7 @@ void Pane::Render(u8 parent_alpha, float adjust_x, float adjust_y) const
 
 Pane* Pane::FindPane(const std::string& find_name)
 {
-	if (find_name == name)
+	if (find_name == GetName())
 		return this;
 
 	Pane* found = nullptr;
@@ -128,7 +125,7 @@ Pane* Pane::FindPane(const std::string& find_name)
 
 void Pane::ProcessHermiteKey(const KeyType& type, float value)
 {
-	if (type.tag == RLVC)	// vertex color
+	if (type.type == ANIMATION_TYPE_VERTEX_COLOR)	// vertex color
 	{
 		// only alpha is supported for Panes afaict
 		if (0x10 == type.target)
@@ -137,7 +134,7 @@ void Pane::ProcessHermiteKey(const KeyType& type, float value)
 			return;
 		}
 	}
-	else if (type.tag == RLPA)	// pane animation
+	else if (type.type == ANIMATION_TYPE_PANE)	// pane animation
 	{
 		if (type.target < 10)
 		{
@@ -168,13 +165,83 @@ void Pane::ProcessHermiteKey(const KeyType& type, float value)
 
 void Pane::ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data)
 {
-	if (type.tag == RLVI)	// visibility
+	if (type.type == ANIMATION_TYPE_VISIBILITY)	// visibility
 	{
 		SetVisible(!!data.data2);
 		return;
 	}
 	
 	Base::ProcessStepKey(type, data);
+}
+
+void Quad::Load(std::istream& file)
+{
+	ReadBEArray(file, &vertex_colors->r, sizeof(vertex_colors));
+
+	u8 tex_coord_count;
+
+	file >> BE >> material_index >> tex_coord_count;
+	file.seekg(1, std::ios::cur);
+
+	tex_coords.resize(tex_coord_count);
+	if (tex_coord_count)
+		ReadBEArray(file, &tex_coords[0].coords->s, sizeof(TexCoords) / sizeof(float) * tex_coord_count);
+}
+
+void Quad::Draw(const Resources& resources, u8 render_alpha) const
+{
+	if (material_index < resources.materials.size())
+		resources.materials[material_index]->Apply(resources.textures);
+
+	// go lambda
+	auto const quad_vertex = [=](unsigned int v, float x, float y)
+	{
+		// color
+		glColor4ub(vertex_colors[v].r, vertex_colors[v].g, vertex_colors[v].b,
+			MultiplyColors(vertex_colors[v].a, render_alpha));	// apply alpha
+
+		// tex coords
+		GLenum target = GL_TEXTURE0;
+		ForEach(tex_coords, [&](const TexCoords& tc)
+		{
+			glMultiTexCoord2fv(target++, &tc.coords[v].s);
+		});
+
+		// position
+		glVertex2f(x, y);
+	};
+
+	glPushMatrix();
+
+	// size
+	glScalef(GetWidth(), GetHeight(), 1.f);
+
+	// origin
+	glTranslatef(-0.5f * GetOriginX(), -0.5f * GetOriginY(), 0.f);
+
+	glBegin(GL_QUADS);
+	quad_vertex(2, 0.f, 0.f);
+	quad_vertex(3, 1.f, 0.f);
+	quad_vertex(1, 1.f, 1.f);
+	quad_vertex(0, 0.f, 1.f);
+	glEnd();
+
+	glPopMatrix();
+}
+
+void Quad::ProcessHermiteKey(const KeyType& type, float value)
+{
+	if (type.type == ANIMATION_TYPE_VERTEX_COLOR)	// vertex color
+	{
+		if (type.target < 0x10)
+		{
+			// vertex colors
+			(&vertex_colors->r)[type.target] = (u8)value;
+			return;
+		}
+	}
+	
+	Base::ProcessHermiteKey(type, value);
 }
 
 }
