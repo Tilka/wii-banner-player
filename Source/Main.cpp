@@ -32,11 +32,12 @@ distribution.
 #include <sstream>
 #include <string>
 
+#include "Banner.h"
+#include "Types.h"
+
 #include "WrapGx.h"
 
 #include <gl/glew.h>
-
-#include "Banner.h"
 
 #include <SFML/Window.hpp>
 #include <SFML/Audio.hpp>
@@ -45,59 +46,17 @@ distribution.
 
 void DrawBorder()
 {
-	static const int smooth = 20;
-	static const double border = 1.10;
-	static const float bottom = 0.4f;
+	glColor4f(0, 0, 0, 1.f);
+	glUseProgram(0);
 
-	static const double pi = 3.141592653589793238462643;
-
-	glLoadIdentity();
-	glOrtho(-border, border, -border, border, -1, 1);
-
-	glDisable(GL_BLEND);
-	//glDisable(GL_TEXTURE);
-
-	// sides
 	glBegin(GL_QUADS);
-	// left
-	glVertex2f(-2.f, -2.f);
-	glVertex2f(-1.f, -2.f);
-	glVertex2f(-1.f, 2.f);
-	glVertex2f(-2.f, 2.f);
-	// top
-	glVertex2f(-2.f, 2.f);
-	glVertex2f(2.f, 2.f);
-	glVertex2f(2.f, 1.f);
-	glVertex2f(-2.f, 1.f);
-	// right
-	glVertex2f(1.f, -2.f);
-	glVertex2f(2.f, -2.f);
-	glVertex2f(2.f, 2.f);
-	glVertex2f(1.f, 2.f);
-	// bottom
-	glVertex2f(-2.f, -1.f + bottom);
-	glVertex2f(2.f, -1.f + bottom);
-	glVertex2f(2.f, -2.f);
-	glVertex2f(-2.f, -2.f);
+	glVertex2f(-450.f, -112.f);
+	glVertex2f(450.f, -112.f);
+	glVertex2f(450.f, -400.f);
+	glVertex2f(-450.f, -400.f);
 	glEnd();
 
-	// corners
-	// TODO:
-	//for (int c = 0; ; ++c)
-	//{
-	//	glBegin(GL_TRIANGLE_FAN);
-	//	glVertex2f(2.f, 2.f);
-	//	float angle = 0;
-	//	for (unsigned int i = 0; i <= smooth; ++i, angle += pi / 2 / smooth)
-	//		glVertex2f(std::sinf(angle), std::cosf(angle));
-	//	glEnd();
-
-	//	if (4 == c)
-	//		break;
-	//	glRotatef(90, 0, 0, 1);
-	//}
-
-	glEnable(GL_BLEND);
+	// TODO: need to cover some of the top and sides
 }
 
 #if defined(_WIN32) && !defined(DEBUG) && NO_CONSOLE
@@ -114,9 +73,13 @@ int main(int argc, char* argv[])
 	if (2 == argc)
 		fname = argv[1];
 
-	// TODO: parse brlyt file separate from loading texture,
-	// to get width/height without needing to have a window open first
 	sf::Window window(sf::VideoMode(608, 456, 32), "Wii Banner Player");
+
+	static const float
+		min_aspect = 4.f / 3,
+		max_aspect = 16.f / 9;
+
+	float render_aspect = min_aspect;
 
 	GX_Init(0, 0);
 
@@ -133,10 +96,6 @@ int main(int argc, char* argv[])
 	banner.GetIcon()->SetLanguage("ENG");	// TODO: do icons ever have groups?
 
 	WiiBanner::Layout* layout = banner.GetBanner();
-
-	window.SetSize((int)layout->GetWidth(), (int)layout->GetHeight());
-
-	//glViewport(0, 0, layout->GetWidth(), layout->GetHeight());
 
 	glMatrixMode(GL_MODELVIEW);
 
@@ -159,18 +118,18 @@ int main(int argc, char* argv[])
 
 			case sf::Event::Resized:
 				{
-					const float
-						banner_aspect = /*16.f / 9,*/layout->GetWidth() / layout->GetHeight(),
-						window_aspect = (float)ev.Size.Width / (float)ev.Size.Height;
+					const float window_aspect = (float)ev.Size.Width / (float)ev.Size.Height;
+					
+					render_aspect = Clamp(window_aspect, min_aspect, max_aspect);
 
-					if (banner_aspect > window_aspect)
+					if (render_aspect > window_aspect)
 					{
-						const GLsizei h = GLsizei(ev.Size.Width / banner_aspect);
+						const GLsizei h = GLsizei(ev.Size.Width / render_aspect);
 						glViewport(0, (ev.Size.Height - h) / 2, ev.Size.Width, h);
 					}
 					else
 					{
-						const GLsizei w = GLsizei(ev.Size.Height * banner_aspect);
+						const GLsizei w = GLsizei(ev.Size.Height * render_aspect);
 						glViewport((ev.Size.Width - w) / 2, 0, w, ev.Size.Height);
 					}
 
@@ -222,8 +181,8 @@ int main(int argc, char* argv[])
 
 					// change layout
 				case sf::Key::Return:
-					layout = (layout == banner.GetBanner()) ? banner.GetIcon() : banner.GetBanner();
-					window.SetSize((int)layout->GetWidth(), (int)layout->GetHeight());
+					layout = (banner.GetBanner() == layout) ? banner.GetIcon() : banner.GetBanner();
+					//window.SetSize((int)layout->GetWidth(), (int)layout->GetHeight());
 					break;
 				}
 				break;
@@ -233,12 +192,13 @@ int main(int argc, char* argv[])
 		window.SetActive();
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glClearColor(0, 0, 0, 1);
+		glClearColor(0, 0, 0, 1.f);
 
-		layout->Render();
+		layout->Render(render_aspect);
 
-		//glColor4f(1.f, 1.f, 1.f, 1.f);
-		//DrawBorder();
+		// TODO: reset any crazy blend modes and crap before drawing border
+		if (banner.GetBanner() == layout)
+			DrawBorder();
 
 		window.Display();
 

@@ -200,7 +200,7 @@ Banner::Banner(const std::string& filename)
 
 		// load fonts
 		{
-		// this guy is in "User\Wii\shared1"
+		// this guy is in "User/Wii/shared1"
 		std::ifstream font_file("00000003.app", std::ios::binary | std::ios::in);
 		DiscIO::CARCFile font_arc(font_file);
 
@@ -254,7 +254,14 @@ Banner::Banner(const std::string& filename)
 	};
 
 	layout_banner = load_layout("banner");
+	// crop
+	layout_banner->SetWidth(608.f);
+	layout_banner->SetHeight(456.f);
+
 	layout_icon = load_layout("icon");
+	// crop
+	layout_icon->SetWidth(128.f);
+	layout_icon->SetHeight(96.f);
 
 	// AUDIO!!
 

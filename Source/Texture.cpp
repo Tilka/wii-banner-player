@@ -89,9 +89,6 @@ void Texture::Load(std::istream& file)
 			file >> BE >> palette_count >> palette_unused
 				>> palette_format >> palette_data_offset;
 
-			std::cout << "palette_offset != 0 (count: "
-				<< palette_count << " format: "<< palette_format << ")\n";
-
 			// TODO: check if > sizeof(g_tlut_read_buffer)
 
 			// seek to/read palette data

@@ -48,6 +48,8 @@ GXFifoObj * 	GX_Init (void *base, u32 size)
 {
 	glewInit();
 
+	//TexDecoder_SetTexFmtOverlayOptions(true, false);
+
 	return nullptr;
 }
 
@@ -520,8 +522,6 @@ void CompiledTevStages::Compile(const TevStages& stages)
 
 			switch (tevop)
 			{
-				// TODO: should this be default
-			default:
 			case 0: // ADD
 			case 1: // SUB
 				frag_ss << "mix(a" << swiz << ", b" << swiz << ", c" << swiz << ")";
@@ -547,7 +547,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 			case 15: // COMP_RGB8_EQ
 			//	break;
 			
-			//default:
+			default:
 				frag_ss << "(vec4(0.0))" << swiz;
 				std::cout << "Unsupported tevop!! " << (int)tevop << '\n';
 				break;

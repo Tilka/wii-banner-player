@@ -137,19 +137,23 @@ void Font::Load(std::istream& file)
 
 			file >> BE >> cell_width >> cell_height >> baseline_pos >> max_char_width
 				>> sheet_size >> sheet_count >> sheet_format >> sheet_row
-				>> sheet_row >> sheet_line >> sheet_width >> sheet_height >> sheet_image;
+				>> sheet_row >> sheet_line >> sheet_width >> sheet_height;
+			
+			file >> LE >> sheet_image;
 
 			//std::cout << "tglp\n";
 
 			//std::cout << file.tellg() << '\n';
 
 			// testing
-			sheet_width = sheet_row * cell_width;
+			//sheet_width = sheet_row * cell_width;
 			sheet_height = sheet_line * cell_height;
 
 			auto const tex_size = GX_GetTexBufferSize(sheet_width, sheet_height, sheet_format & 0x7fff, 0, 0);
 
 			// TODO: is it ok to assume texture data starts right here?
+			file.seekg(sheet_image, std::ios::beg);
+
 			char* const tex_data = new char[tex_size];
 			file.read(tex_data, tex_size);
 

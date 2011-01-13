@@ -69,7 +69,7 @@ void Pane::SetFrame(FrameNumber frame, u8 key_set)
 	});
 }
 
-void Pane::Render(const Resources& resources, u8 parent_alpha, float adjust_x, float adjust_y) const
+void Pane::Render(const Resources& resources, u8 parent_alpha, Vec2 adjust) const
 {
 	if (!GetVisible() || GetHide())
 		return;
@@ -80,12 +80,13 @@ void Pane::Render(const Resources& resources, u8 parent_alpha, float adjust_x, f
 	glPushMatrix();
 
 	// position
+	glTranslatef(GetTranslate().x * adjust.x, GetTranslate().y * adjust.y, GetTranslate().z);
+
 	if (!GetPositionAdjust())
 	{
-		adjust_x = 1.f;
-		adjust_y = 1.f;
+		adjust.x = 1.f;
+		adjust.y = 1.f;
 	}
-	glTranslatef(GetTranslate().x * adjust_x, GetTranslate().y * adjust_y, GetTranslate().z);
 
 	// rotate
 	glRotatef(GetRotate().x, 1.f, 0.f, 0.f);
@@ -101,7 +102,7 @@ void Pane::Render(const Resources& resources, u8 parent_alpha, float adjust_x, f
 	// render children
 	ForEach(panes, [&](const Pane* pane)
 	{
-		pane->Render(resources, render_alpha, adjust_x, adjust_y);
+		pane->Render(resources, render_alpha, adjust);
 	});
 
 	glPopMatrix();

@@ -53,7 +53,7 @@ public:
 	void Load(std::istream& file);
 	~Layout();
 
-	void Render() /*const*/;
+	void Render(float aspect_ratio) const;
 
 	FrameNumber GetFrame() const { return frame_current; }
 	void SetFrame(FrameNumber frame_number);
@@ -63,7 +63,12 @@ public:
 	void SetLoopEnd(FrameNumber loop_end) { frame_loop_end = loop_end; }
 
 	float GetWidth() const { return width; }
+	void SetWidth(float _width) { width = _width; }
+
 	float GetHeight() const { return height; }
+	void SetHeight(float _height) { height = _height; }
+
+	//bool GetCentered() const { return !!centered; }
 
 	void SetLanguage(const std::string& language);
 

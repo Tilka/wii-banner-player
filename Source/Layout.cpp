@@ -243,34 +243,22 @@ Layout::~Layout()
 	});
 }
 
-void Layout::Render() /*const*/
+void Layout::Render(float aspect_ratio) const
 {
 	glLoadIdentity();
 
-	float l, r, b, t;
+	// TODO: make this work good :p
+	Vec2 adjust;
+	adjust.x = aspect_ratio / 4 * 3;
+	adjust.y = 1.f;
 
-	l = centered * -width / 2;
-	r = width * centered / 2;
-
-	b = centered * -height / 2;
-	t = height * centered / 2;
-
-	// an attempt to crop
-#if 0
-	const float x = (l + r) / 2, y = (b + t) / 2;
-
-	l = x - (576 - 288);
-	r = x + 288;
-
-	b = y - (324 - 217);
-	t = y + 217;
-#endif
-
-	glOrtho(l, r, b, t, -1000.f, 1000.f);
+	glOrtho(0.f, width * adjust.x, 0.f, height * adjust.y, -1000.f, 1000.f);
+	// assuming always centered, hope this isn't an issue
+	glTranslatef(width / 2 * adjust.x, height / 2 * adjust.y, 0.f);
 
 	ForEach(panes, [&](Pane* pane)
 	{
-		pane->Render(resources, 0xff, 1.f, 1.f);	// fully opaque
+		pane->Render(resources, 0xff, adjust);
 	});
 }
 

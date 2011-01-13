@@ -101,7 +101,7 @@ public:
 	void Load(std::istream& file);
 	virtual ~Pane();
 
-	void Render(const Resources& resources, u8 parent_alpha, float adjust_x, float adjust_y) const;
+	void Render(const Resources& resources, u8 parent_alpha, Vec2 adjust) const;
 	void SetFrame(FrameNumber frame, u8 key_set);
 
 	bool GetVisible() const { return GetBit(flags, FLAG_VISIBLE); }
@@ -113,8 +113,8 @@ public:
 	void SetInfluencedAlpha(bool influenced) { SetBit(flags, FLAG_INFLUENCED_ALPHA, !influenced); }
 
 	// TODO: better name?
-	bool GetPositionAdjust() const { return GetBit(flags, FLAG_POSITION_ADJUST); }
-	void SetPositionAdjust(bool influenced) { SetBit(flags, FLAG_POSITION_ADJUST, influenced); }
+	bool GetPositionAdjust() const { return !GetBit(flags, FLAG_POSITION_ADJUST); }
+	void SetPositionAdjust(bool adjust) { SetBit(flags, FLAG_POSITION_ADJUST, !adjust); }
 
 	bool GetHide() const { return hide; }
 	void SetHide(bool _hide) { hide = _hide; }
