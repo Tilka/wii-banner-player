@@ -79,7 +79,7 @@ void Textbox::Draw(const Resources& resources, u8 render_alpha) const
 
 	glColor4ub(colors[0].r, colors[0].g, colors[0].b, MultiplyColors(colors[0].a, render_alpha));
 
-	ForEach(text, [this](wchar_t c)
+	foreach (wchar_t c, text)
 	{
 		glBegin(GL_QUADS);
 		glTexCoord2f(0.f, 0.f);
@@ -96,7 +96,7 @@ void Textbox::Draw(const Resources& resources, u8 render_alpha) const
 		glEnd();
 
 		glTranslatef(16.f + space_char, 0.f, 0.f);
-	});
+	}
 
 	glPopMatrix();
 }

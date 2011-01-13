@@ -71,8 +71,7 @@ public:
 	template <typename V>
 	BEStream& operator>>(V& rhs)
 	{
-		CompileTimeAssert<std::is_arithmetic<V>::value> asrt;
-		(void)asrt;
+		static_assert(std::is_arithmetic<V>::value, "BEStream operator >> parameter must be arithmetic");
 
 		m_stream.read(reinterpret_cast<char*>(&rhs), sizeof(V));
 		Common::SwapData<sizeof(V)>(reinterpret_cast<u8*>(&rhs));
@@ -106,8 +105,7 @@ public:
 	template <typename V>
 	LEStream& operator>>(V& rhs)
 	{
-		CompileTimeAssert<std::is_arithmetic<V>::value> asrt;
-		(void)asrt;
+		static_assert(std::is_arithmetic<V>::value, "LEStream operator >> parameter must be arithmetic");
 
 		m_stream.read(reinterpret_cast<char*>(&rhs), sizeof(rhs));
 

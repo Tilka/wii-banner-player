@@ -148,7 +148,7 @@ protected:
 private:
 	virtual void Draw(const Resources& resources, u8 render_alpha) const {};
 
-	enum
+	enum : u8
 	{
 		FLAG_VISIBLE,
 		FLAG_INFLUENCED_ALPHA,

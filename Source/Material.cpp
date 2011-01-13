@@ -293,7 +293,7 @@ void Material::Apply(const TextureList& textures) const
 	// bind textures
 	{
 	unsigned int i = 0;
-	ForEach(texture_maps, [&](const TextureMap& tr)
+	foreach (auto& tr, texture_maps)
 	{
 		if (tr.tex_index < textures.size())
 		{
@@ -304,14 +304,14 @@ void Material::Apply(const TextureList& textures) const
 		}
 
 		++i;
-	});
+	}
 	}
 
 	// texture coord gen
 	glMatrixMode(GL_TEXTURE);
 	{
 	unsigned int i = 0;
-	ForEach(texture_coord_gens, [&](const TextureCoordGen& tcg)
+	foreach (auto& tcg, texture_coord_gens)
 	{
 		glActiveTexture(GL_TEXTURE0 + i);
 		glLoadIdentity();
@@ -333,7 +333,7 @@ void Material::Apply(const TextureList& textures) const
 		}
 
 		++i;
-	});
+	}
 	// TODO: is this needed?
 	for (; i != 8; ++i)
 	{
@@ -346,7 +346,7 @@ void Material::Apply(const TextureList& textures) const
 	// tev stages
 	{
 	int i = 0;
-	ForEach(tev_stages, [&](const TevStage& ts)
+	foreach (auto& ts, tev_stages)
 	{
 		GX_SetTevOrder(i, ts.tex_coord, ts.tex_map, ts.color);
 		GX_SetTevSwapMode(i, ts.ras_sel, ts.tex_sel);
@@ -363,7 +363,7 @@ void Material::Apply(const TextureList& textures) const
 			ts.ind.wrap_s, ts.ind.wrap_t, ts.ind.add_prev, ts.ind.utc_lod, ts.ind.alpha);
 
 		++i;
-	});
+	}
 	
 	// enable correct number of tev stages
 	GX_SetNumTevStages(i);

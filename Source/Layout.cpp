@@ -33,7 +33,7 @@ distribution.
 namespace WiiBanner
 {
 
-static enum BinaryMagic
+static enum BinaryMagic : u32
 {
 	BINARY_MAGIC_LAYOUT = 'RLYT',
 
@@ -222,25 +222,17 @@ void Layout::Load(std::istream& file)
 
 Layout::~Layout()
 {
-	ForEach(panes, [](Pane* pane)
-	{
+	foreach (Pane* pane, panes)
 		delete pane;
-	});
 
-	ForEach(resources.materials, [](Material* material)
-	{
+	foreach (Material* material, resources.materials)
 		delete material;
-	});
 
-	ForEach(resources.textures, [](Texture* texture)
-	{
+	foreach (Texture* texture, resources.textures)
 		delete texture;
-	});
 
-	ForEach(resources.fonts, [](Font* font)
-	{
+	foreach (Font* font, resources.fonts)
 		delete font;
-	});
 }
 
 void Layout::Render(float aspect_ratio) const
@@ -256,10 +248,8 @@ void Layout::Render(float aspect_ratio) const
 	// assuming always centered, hope this isn't an issue
 	glTranslatef(width / 2 * adjust.x, height / 2 * adjust.y, 0.f);
 
-	ForEach(panes, [&](Pane* pane)
-	{
+	foreach (Pane* pane, panes)
 		pane->Render(resources, 0xff, adjust);
-	});
 }
 
 void Layout::SetFrame(FrameNumber frame_number)
@@ -270,15 +260,11 @@ void Layout::SetFrame(FrameNumber frame_number)
 	if (key_set)
 		frame_number -= frame_loop_start;
 
-	ForEach(panes, [&](Pane* pane)
-	{
+	foreach (Pane* pane, panes)
 		pane->SetFrame(frame_number, key_set);
-	});
 
-	ForEach(resources.materials, [&](Material* material)
-	{
+	foreach (Material* material, resources.materials)
 		material->SetFrame(frame_number, key_set);
-	});
 }
 
 void Layout::AdvanceFrame()
@@ -297,54 +283,53 @@ void Layout::SetLanguage(const std::string& language)
 	// TODO: i'd like an empty language to unhide everything, maybe
 
 	// hide panes of non-matching languages
-	ForEach(groups["RootGroup"].groups, [&language, this](const std::pair<const std::string&, const Group&> group)
+	foreach (auto& group, groups["RootGroup"].groups)
 	{
 		// some hax, there are some odd "Rso0" "Rso1" groups that shouldn't be hidden
 		// only the 3 character language groups should be
 		if (group.first != language && group.first.length() == 3)
 		{
-			ForEach(group.second.panes, [&](const std::string& pane)
+			foreach (auto& pane, group.second.panes)
 			{
 				Pane* const found = FindPane(pane);
 				if (found)
 					found->SetHide(true);
-			});
+			}
 		}
-	});
+	}
 
 	// unhide panes of matching language, some banners list language specific panes in multiple language groups
-	ForEach(groups["RootGroup"].groups[language].panes, [&](const std::string& pane)
+	foreach (auto& pane, groups["RootGroup"].groups[language].panes)
 	{
 		Pane* const found = FindPane(pane);
 		if (found)
 			found->SetHide(false);
-	});
+	}
 }
 
 Pane* Layout::FindPane(const std::string& find_name)
 {
 	Pane* found = nullptr;
 
-	ForEach(panes, [&](Pane* pane)
+	foreach (Pane* pane, panes)
 	{
-		if (!found)
-			found = pane->FindPane(find_name);	// TODO: oh noes, can't break out of this lambda loop
-	});
+		found = pane->FindPane(find_name);
+		if (found)
+			break;
+	}
 
 	return found;
 }
 
 Material* Layout::FindMaterial(const std::string& find_name)
 {
-	Material* found = nullptr;
-
-	ForEach(resources.materials, [&](Material* material)
+	foreach (Material* material, resources.materials)
 	{
-		if (!found && find_name == material->GetName())
-			found = material;	// TODO: oh noes, can't break out of this lambda loop
-	});
+		if (find_name == material->GetName())
+			return material;
+	}
 
-	return found;
+	return nullptr;
 }
 
 }

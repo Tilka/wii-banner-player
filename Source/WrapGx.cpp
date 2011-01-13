@@ -482,8 +482,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 
 	frag_ss << "const vec3 comp16 = vec3(1.0, 255.0, 0.0), comp24 = vec3(1.0, 255.0, 255.0 * 255.0);";
 
-	//unsigned int i = 0;
-	ForEach(stages, [&](const TevStageProps& stage)
+	foreach (auto& stage, stages)
 	{
 		// current texture color
 		// 0xff is a common value for a disabled texture
@@ -572,9 +571,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 		frag_ss << output_registers[stage.alpha_regid] << ".a = result" ".a;";
 
 		frag_ss << '}';
-
-		//++i;
-	});
+	}
 
 	frag_ss << "gl_FragColor = color_previous;";
 

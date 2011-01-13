@@ -51,10 +51,8 @@ void Pane::Load(std::istream& file)
 Pane::~Pane()
 {
 	// delete children
-	ForEach(panes, [](Pane* const pane)
-	{
+	foreach (Pane* pane, panes)
 		delete pane;
-	});
 }
 
 void Pane::SetFrame(FrameNumber frame, u8 key_set)
@@ -63,10 +61,8 @@ void Pane::SetFrame(FrameNumber frame, u8 key_set)
 	Animator::SetFrame(frame, key_set);
 
 	// setframe on children
-	ForEach(panes, [&](Pane* pane)
-	{
+	foreach (Pane* pane, panes)
 		pane->SetFrame(frame, key_set);
-	});
 }
 
 void Pane::Render(const Resources& resources, u8 parent_alpha, Vec2 adjust) const
@@ -100,10 +96,8 @@ void Pane::Render(const Resources& resources, u8 parent_alpha, Vec2 adjust) cons
 	Draw(resources, render_alpha);
 
 	// render children
-	ForEach(panes, [&](const Pane* pane)
-	{
+	foreach (Pane* pane, panes)
 		pane->Render(resources, render_alpha, adjust);
-	});
 
 	glPopMatrix();
 }
@@ -115,11 +109,12 @@ Pane* Pane::FindPane(const std::string& find_name)
 
 	Pane* found = nullptr;
 
-	ForEach(panes, [&](Pane* pane)
+	foreach (Pane* pane, panes)
 	{
-		if (!found)
-			found = pane->FindPane(find_name);	// TODO: oh noes, can't break out of this lambda loop
-	});
+		found = pane->FindPane(find_name);
+		if (found)
+			break;
+	}
 
 	return found;
 }
@@ -203,10 +198,8 @@ void Quad::Draw(const Resources& resources, u8 render_alpha) const
 
 		// tex coords
 		GLenum target = GL_TEXTURE0;
-		ForEach(tex_coords, [&](const TexCoords& tc)
-		{
+		foreach (auto& tc, tex_coords)
 			glMultiTexCoord2fv(target++, &tc.coords[v].s);
-		});
 
 		// position
 		glVertex2f(x, y);

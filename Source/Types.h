@@ -40,6 +40,14 @@ distribution.
 // TODO: remove
 #include "Endian.h"
 
+#ifdef _WIN32
+// some silly vc++ crap
+#define foreach(e, c) for each (e in c)
+#else
+// c++0x range-based for loop
+#define foreach(e, c) for (e : c)
+#endif
+
 struct Vec2
 {
 	float x, y;
@@ -88,18 +96,6 @@ inline std::ostream& operator<<(std::ostream& lhs, const FourCC& rhs)
 	return lhs;
 }
 
-template <typename C, typename F>
-inline void ForEach(C& container, F func)
-{
-	std::for_each(container.begin(), container.end(), func);
-}
-
-//template <typename C, typename F>
-//void ForEachReverse(C& container, F func)
-//{
-//	std::for_each(container.rbegin(), container.rend(), func);
-//}
-
 template <typename T>
 inline T Clamp(T value, T min, T max)
 {
@@ -138,7 +134,7 @@ void ReadSections(std::istream& file, C count, F func)
 class Named
 {
 public:
-	std::string& GetName() { return name; }	// how silly is this?
+	//std::string& GetName() { return name; }	// how silly is this?
 	const std::string& GetName() const { return name; }
 	void SetName(const std::string& _name) { name = _name; }
 

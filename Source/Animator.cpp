@@ -77,21 +77,21 @@ void Animator::LoadKeyFrames(std::istream& file, u8 tag_count, std::streamoff or
 
 void Animator::SetFrame(FrameNumber frame_number, u8 key_set)
 {
-	ForEach(keys[key_set].hermite_keys, [=](const std::pair<const KeyType&, const HermiteKeyHandler&> frame_handler)
+	foreach (auto& frame_handler, keys[key_set].hermite_keys)
 	{
 		const auto& frame_type = frame_handler.first;
 		const auto frame_value = frame_handler.second.GetFrame(frame_number);
 
 		ProcessHermiteKey(frame_type, frame_value);
-	});
+	}
 
-	ForEach(keys[key_set].step_keys, [=](const std::pair<const KeyType&, const StepKeyHandler&> frame_handler)
+	foreach (auto& frame_handler, keys[key_set].step_keys)
 	{
 		const auto& frame_type = frame_handler.first;
 		auto const frame_data = frame_handler.second.GetFrame(frame_number);
 
 		ProcessStepKey(frame_type, frame_data);
-	});
+	}
 }
 
 void StepKeyHandler::Load(std::istream& file, u16 count)

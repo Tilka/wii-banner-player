@@ -37,7 +37,7 @@ struct CharWidths
 	s8 char_width;               // character width  = left space width  + glyph width  + right space width
 };
 
-static enum BinaryMagic
+static enum BinaryMagic : u32
 {
 	BINARY_MAGIC_FONT = 'RFNA',
 

@@ -35,7 +35,7 @@ distribution.
 namespace WiiBanner
 {
 
-static enum BinaryMagic
+static enum BinaryMagic : u32
 {
 	BINARY_MAGIC_U8_ARCHIVE = MAKE_FOURCC('U', 0xAA, '8', '-'),
 
@@ -188,7 +188,7 @@ Banner::Banner(const std::string& filename)
 		layout->Load(file);
 
 		// load textures
-		ForEach(layout->resources.textures, [&](Texture* texture)
+		foreach (Texture* texture, layout->resources.textures)
 		{
 			auto const texture_offset = bin_arc.GetFileOffset("arc/timg/" + texture->GetName());
 			if (texture_offset)
@@ -196,7 +196,7 @@ Banner::Banner(const std::string& filename)
 				file.seekg(texture_offset, std::ios::beg);
 				texture->Load(file);
 			}
-		});
+		}
 
 		// load fonts
 		{
@@ -204,7 +204,7 @@ Banner::Banner(const std::string& filename)
 		std::ifstream font_file("00000003.app", std::ios::binary | std::ios::in);
 		DiscIO::CARCFile font_arc(font_file);
 
-		ForEach(layout->resources.fonts, [&](Font* font)
+		foreach (Font* font, layout->resources.fonts)
 		{
 			auto const font_offset = font_arc.GetFileOffset(font->GetName());
 
@@ -215,7 +215,7 @@ Banner::Banner(const std::string& filename)
 
 				//std::cout << "font name: " << font->name << '\n';
 			}
-		});
+		}
 		}
 
 		FrameNumber length_start = 0, length_loop = 0;

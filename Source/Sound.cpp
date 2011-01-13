@@ -30,7 +30,7 @@ distribution.
 namespace WiiBanner
 {
 
-static enum BinaryMagic
+static enum BinaryMagic : u32
 {
 	BINARY_MAGIC_WAV = 'RIFF',
 	BINARY_MAGIC_AIFF = 'FORM',

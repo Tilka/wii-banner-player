@@ -33,7 +33,7 @@ namespace WiiBanner
 
 typedef float FrameNumber;
 
-enum AnimationType
+enum AnimationType : u32
 {
 	//ANIMATION_TYPE_INVALID = 0x0,
 	ANIMATION_TYPE_PANE = 'RLPA',
@@ -90,6 +90,7 @@ public:
 
 	float GetFrame(FrameNumber frame_number) const;
 
+private:
 	std::multimap<FrameNumber, KeyData> keys;
 };
 
