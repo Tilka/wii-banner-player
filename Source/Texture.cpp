@@ -22,6 +22,7 @@ distribution.
 */
 
 #include <fstream>
+#include <set>
 
 #include "Texture.h"
 
@@ -33,8 +34,24 @@ static enum BinaryMagic : u32
 	BINARY_MAGIC_TEXTURE = MAKE_FOURCC(0x00, ' ', 0xAF, 0x30)
 };
 
-static char g_tlut_read_buffer[16 * 1024];
-static char g_texture_read_buffer[512 * 512 * 4];
+static std::set<u32> g_occupied_tlut_names;
+
+u32 GetFreeTlutName()
+{
+	u32 ret = 1;
+	while (g_occupied_tlut_names.end() != g_occupied_tlut_names.find(ret))
+		++ret;
+
+	return ret;
+}
+
+Texture::~Texture()
+{
+	delete[] img_ptr;
+	delete[] tlut_ptr;
+
+	g_occupied_tlut_names.erase(tlut_name);
+}
 
 void Texture::Load(std::istream& file)
 {
@@ -93,13 +110,17 @@ void Texture::Load(std::istream& file)
 
 			// seek to/read palette data
 			file.seekg(file_start + palette_data_offset, std::ios::beg);
-			file.read(g_tlut_read_buffer, palette_count * 2);
+			tlut_ptr = new char[palette_count * 2];
+			file.read(tlut_ptr, palette_count * 2);
 
 			// load tlut
 			GXTlutObj tlutobj;
-			GX_InitTlutObj(&tlutobj, g_tlut_read_buffer, palette_format, palette_count);
-			GX_LoadTlut(&tlutobj, 0);
-			GX_InitTexObjTlut(&texobj, 0);
+			GX_InitTlutObj(&tlutobj, tlut_ptr, palette_format, palette_count);
+
+			g_occupied_tlut_names.insert(tlut_name = GetFreeTlutName());
+
+			GX_LoadTlut(&tlutobj, tlut_name);
+			GX_InitTexObjTlut(&texobj, tlut_name);
 		}
 
 		// seek to texture header
@@ -127,15 +148,16 @@ void Texture::Load(std::istream& file)
 
 		const u32 tex_size = GX_GetTexBufferSize(width, height, format, true, max_lod);
 
-		if (tex_size > sizeof(g_texture_read_buffer))
-			std::cout << "texture is too large\n";
-		else
+		//if (tex_size > sizeof(g_texture_read_buffer))
+			//std::cout << "texture is too large\n";
+		//else
 		{
-			file.read(g_texture_read_buffer, tex_size);
+			img_ptr = new char[tex_size];
+
+			file.read(img_ptr, tex_size);
 
 			// load the texture
-			GX_InitTexObj(&texobj, g_texture_read_buffer,
-				width, height, format, wrap_s, wrap_t, true);
+			GX_InitTexObj(&texobj, img_ptr,	width, height, format, wrap_s, wrap_t, true);
 
 			// filter mode
 			GX_InitTexObjFilterMode(&texobj, min_filter, mag_filter);

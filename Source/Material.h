@@ -74,7 +74,7 @@ private:
 			scale.x = scale.y = 1.f;
 		}
 
-		Vec2 translate, scale;
+		Vec2f translate, scale;
 		float rotate;
 	};
 	std::vector<TextureSrt> texture_srts;

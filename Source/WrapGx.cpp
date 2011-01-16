@@ -27,6 +27,7 @@ distribution.
 
 #include <iostream>
 #include <map>
+#include <set>
 #include <vector>
 #include <sstream>
 
@@ -43,21 +44,154 @@ static float g_color_registers[3][4];
 // TODO: make this 0, currently causes issues though, figure that out :p
 static const GLuint g_texmap_start_index = 1;
 
+//static GLuint g_clip_texture;
+
 // silly
 GXFifoObj * 	GX_Init (void *base, u32 size)
 {
 	glewInit();
+
+	//glGenTextures(1, &g_clip_texture);
+
+	//glActiveTexture(GL_TEXTURE0);
+	//glBindTexture(GL_TEXTURE_2D, g_clip_texture);
+	//u8 pixels[1] = { 0xff };
+	//glTexImage2D(GL_TEXTURE_2D, g_clip_texture, GL_ALPHA, 1, 1, 0, GL_ALPHA, GL_UNSIGNED_BYTE, pixels);
 
 	//TexDecoder_SetTexFmtOverlayOptions(true, false);
 
 	return nullptr;
 }
 
+//void 	GX_SetViewport (f32 xOrig, f32 yOrig, f32 wd, f32 ht, f32 nearZ, f32 farZ)
+//{
+//	const GLenum target = GL_TEXTURE0;
+//	glBegin(GL_QUADS);
+//	//glMultiTexCoord2f(target, xOrig, yOrig);
+//	glEnd();
+//}
+
+struct TlutObj
+{
+	void* lut;
+	u16 entries;
+	u8 fmt;
+};
+
+std::map<u32, TlutObj> g_tlut_names;
+
 struct GLTexObj
 {
-	GLuint tex;
-	u8 tlutfmt;
+	void* img_ptr;
+
+	mutable GLuint tex; // ugly
+
+	u16 wd, ht;
+	u8 fmt;
+	u32 tlut_name;
+	u8 wrap_s, wrap_t;
+	u8 minfilt, magfilt;
+
+	GLTexObj() : tex(0) {}
+
+	~GLTexObj()
+	{
+		glDeleteTextures(1, &tex);
+	}
+
+	bool operator<(const GLTexObj& rhs) const
+	{
+		// this is probably good enough
+		return img_ptr < rhs.img_ptr;
+	}
+
+	void Bind() const
+	{
+		if (tex)
+			glBindTexture(GL_TEXTURE_2D, tex);
+		else
+		{
+			glGenTextures(1, &tex);
+			glBindTexture(GL_TEXTURE_2D, tex);
+
+			const u32 expanded_width  = RoundUp(wd, TexDecoder_GetBlockWidthInTexels(fmt));
+			const u32 expanded_height = RoundUp(ht, TexDecoder_GetBlockHeightInTexels(fmt));
+
+			GLenum gl_format, gl_iformat, gl_type = 0;
+
+			// copy palette data
+			const auto& tlut = g_tlut_names[tlut_name];
+			if (tlut.lut)
+				memcpy(texMem, tlut.lut, tlut.entries * 2);
+			
+			// decode texture
+			auto const pcfmt = TexDecoder_Decode(g_texture_decode_buffer,
+				reinterpret_cast<u8*>(img_ptr), expanded_width, expanded_height, fmt, 0, tlut.fmt);
+
+			// load texture
+			switch (pcfmt)
+			{
+			default:
+			case PC_TEX_FMT_NONE:
+				std::cout << "Error decoding texture!!!\n";
+
+			case PC_TEX_FMT_BGRA32:
+				gl_format = GL_BGRA;
+				gl_iformat = 4;
+				gl_type = GL_UNSIGNED_BYTE;
+				break;
+
+			case PC_TEX_FMT_RGBA32:
+				gl_format = GL_RGBA;
+				gl_iformat = 4;
+				gl_type = GL_UNSIGNED_BYTE;
+				break;
+
+			case PC_TEX_FMT_I4_AS_I8:
+				gl_format = GL_LUMINANCE;
+				gl_iformat = GL_INTENSITY4;
+				gl_type = GL_UNSIGNED_BYTE;
+				break;
+
+			case PC_TEX_FMT_IA4_AS_IA8:
+				gl_format = GL_LUMINANCE_ALPHA;
+				gl_iformat = GL_LUMINANCE4_ALPHA4;
+				gl_type = GL_UNSIGNED_BYTE;
+				break;
+
+			case PC_TEX_FMT_I8:
+				gl_format = GL_LUMINANCE;
+				gl_iformat = GL_INTENSITY8;
+				gl_type = GL_UNSIGNED_BYTE;
+				break;
+
+			case PC_TEX_FMT_IA8:
+				gl_format = GL_LUMINANCE_ALPHA;
+				gl_iformat = GL_LUMINANCE8_ALPHA8;
+				gl_type = GL_UNSIGNED_BYTE;
+				break;
+
+			case PC_TEX_FMT_RGB565:
+				gl_format = GL_RGB;
+				gl_iformat = GL_RGB;
+				gl_type = GL_UNSIGNED_SHORT_5_6_5;
+				break;
+			}
+
+			if (expanded_width != wd)
+				glPixelStorei(GL_UNPACK_ROW_LENGTH, expanded_width);
+
+			glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
+			glTexImage2D(GL_TEXTURE_2D, 0, gl_iformat, wd, ht, 0, gl_format, gl_type, g_texture_decode_buffer);
+			glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_FALSE);
+
+			if (expanded_width != wd)
+				glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+		}
+	}
 };
+
+std::set<GLTexObj> g_texture_cache;
 
 // TODO: doesn't handle mipmap or maxlod
 u32 	GX_GetTexBufferSize (u16 wd, u16 ht, u32 fmt, u8 mipmap, u8 maxlod)
@@ -67,22 +201,11 @@ u32 	GX_GetTexBufferSize (u16 wd, u16 ht, u32 fmt, u8 mipmap, u8 maxlod)
 		RoundUp(ht, TexDecoder_GetBlockHeightInTexels(fmt)), fmt);
 }
 
-// silly
-
-struct TlutObj
-{
-	void* lut;
-	u8 fmt;
-	u16 entries;
-};
-
-u8 g_tlut_names[1];
-
 void 	GX_InitTexObjTlut (GXTexObj *obj, u32 tlut_name)
 {
 	GLTexObj& txobj = *reinterpret_cast<GLTexObj*>(obj);
 
-	txobj.tlutfmt = g_tlut_names[tlut_name];
+	txobj.tlut_name = tlut_name;
 }
 
 void 	GX_InitTlutObj (GXTlutObj *obj, void *lut, u8 fmt, u16 entries)
@@ -98,19 +221,27 @@ void 	GX_LoadTlut (GXTlutObj *obj, u32 tlut_name)
 {
 	TlutObj& tlutobj = *reinterpret_cast<TlutObj*>(obj);
 
-	g_tlut_names[tlut_name] = tlutobj.fmt;
-
-	memcpy(texMem, tlutobj.lut, tlutobj.entries * 2);
+	g_tlut_names[tlut_name] = tlutobj;
 }
 
 void 	GX_InitTexObj (GXTexObj *obj, void *img_ptr, u16 wd, u16 ht, u8 fmt, u8 wrap_s, u8 wrap_t, u8 mipmap)
 {	
 	GLTexObj& txobj = *reinterpret_cast<GLTexObj*>(obj);
 
+	txobj.img_ptr = img_ptr;
+	txobj.wd = wd;
+	txobj.ht = ht;
+	txobj.fmt = fmt;
+	txobj.wrap_s = wrap_s;
+	txobj.wrap_t = wrap_t;
+
+	// hax, invalidate cache entry
+	g_texture_cache.erase(txobj);
+
 	// generate texture
-	glGenTextures(1, &txobj.tex);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, txobj.tex);
+	//glGenTextures(1, &txobj.tex);
+	//glActiveTexture(GL_TEXTURE0);
+	//glBindTexture(GL_TEXTURE_2D, txobj.tex);
 
 	// texture lods
 	// TODO: not sure if correct
@@ -123,122 +254,23 @@ void 	GX_InitTexObj (GXTexObj *obj, void *img_ptr, u16 wd, u16 ht, u8 fmt, u8 wr
 	//wrap_s		// these 2 are handled by the materials values
 	//wrap_t
 
-	const u32 bsw = TexDecoder_GetBlockWidthInTexels(fmt) - 1;
-	const u32 bsh = TexDecoder_GetBlockHeightInTexels(fmt) - 1;
-
-	const u32 expanded_width  = (wd  + bsw) & (~bsw);
-	const u32 expanded_height = (ht + bsh) & (~bsh);
-
-	GLenum gl_format, gl_iformat, gl_type = 0;
-
-	// decode texture
-	auto const pcfmt = TexDecoder_Decode(g_texture_decode_buffer,
-		reinterpret_cast<u8*>(img_ptr), expanded_width, expanded_height, fmt, 0, txobj.tlutfmt);
-
-	// load texture
-	switch (pcfmt)
-	{
-	default:
-	case PC_TEX_FMT_NONE:
-		std::cout << "Error decoding texture!!!\n";
-
-	case PC_TEX_FMT_BGRA32:
-		gl_format = GL_BGRA;
-		gl_iformat = 4;
-		gl_type = GL_UNSIGNED_BYTE;
-		break;
-
-	case PC_TEX_FMT_RGBA32:
-		gl_format = GL_RGBA;
-		gl_iformat = 4;
-		gl_type = GL_UNSIGNED_BYTE;
-		break;
-
-	case PC_TEX_FMT_I4_AS_I8:
-		gl_format = GL_LUMINANCE;
-		gl_iformat = GL_INTENSITY4;
-		gl_type = GL_UNSIGNED_BYTE;
-		break;
-
-	case PC_TEX_FMT_IA4_AS_IA8:
-		gl_format = GL_LUMINANCE_ALPHA;
-		gl_iformat = GL_LUMINANCE4_ALPHA4;
-		gl_type = GL_UNSIGNED_BYTE;
-		break;
-
-	case PC_TEX_FMT_I8:
-		gl_format = GL_LUMINANCE;
-		gl_iformat = GL_INTENSITY8;
-		gl_type = GL_UNSIGNED_BYTE;
-		break;
-
-	case PC_TEX_FMT_IA8:
-		gl_format = GL_LUMINANCE_ALPHA;
-		gl_iformat = GL_LUMINANCE8_ALPHA8;
-		gl_type = GL_UNSIGNED_BYTE;
-		break;
-
-	case PC_TEX_FMT_RGB565:
-		gl_format = GL_RGB;
-		gl_iformat = GL_RGB;
-		gl_type = GL_UNSIGNED_SHORT_5_6_5;
-		break;
-	}
-
-	if (expanded_width != wd)
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, expanded_width);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
-	glTexImage2D(GL_TEXTURE_2D, 0, gl_iformat, wd, ht, 0, gl_format, gl_type, g_texture_decode_buffer);
-	glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_FALSE);
-
-	if (expanded_width != wd)
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-
-	GX_InitTexObjWrapMode(obj, wrap_s, wrap_t);
+	//GX_InitTexObjWrapMode(obj, wrap_s, wrap_t);
 }
 
 void 	GX_InitTexObjWrapMode (GXTexObj *obj, u8 wrap_s, u8 wrap_t)
 {
 	GLTexObj& txobj = *reinterpret_cast<GLTexObj*>(obj);
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, txobj.tex);
-
-	static const GLenum wraps[] =
-	{
-		GL_CLAMP_TO_EDGE,
-		GL_REPEAT,
-		GL_MIRRORED_REPEAT,
-		GL_REPEAT,
-	};
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wraps[wrap_s & 0x3]);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wraps[wrap_t & 0x3]);
+	txobj.wrap_s = wrap_s;
+	txobj.wrap_t = wrap_t;
 }
 
 void 	GX_InitTexObjFilterMode (GXTexObj *obj, u8 minfilt, u8 magfilt)
 {
 	GLTexObj& txobj = *reinterpret_cast<GLTexObj*>(obj);
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, txobj.tex);
-
-	const GLint filters[] =
-	{
-		GL_NEAREST,
-		GL_LINEAR,
-		GL_NEAREST_MIPMAP_NEAREST,
-		GL_LINEAR_MIPMAP_NEAREST,
-		GL_NEAREST_MIPMAP_LINEAR,
-		GL_LINEAR_MIPMAP_LINEAR,
-		GL_NEAREST,	// blah
-		GL_NEAREST,
-	};
-
-	// texture filters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filters[minfilt & 0x7]);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filters[magfilt & 0x7]);
+	txobj.minfilt = minfilt;
+	txobj.magfilt = magfilt;
 }
 
 void 	GX_SetBlendMode (u8 type, u8 src_fact, u8 dst_fact, u8 op)
@@ -403,7 +435,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 	vert_ss << "gl_BackColor = gl_Color;";
 		
 	for (unsigned int i = 0; i != sampler_count; ++i)
-		vert_ss << "gl_TexCoord[" << i << "] = gl_TextureMatrix[" << i << "] * gl_MultiTexCoord" << 0 << ";";
+		vert_ss << "gl_TexCoord[" << i << "] = gl_TextureMatrix[" << i << "] * gl_MultiTexCoord" << 1 << ";";
 
 	vert_ss << "gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;";
 
@@ -647,7 +679,45 @@ void 	GX_LoadTexObj (GXTexObj *obj, u8 mapid)
 	const GLTexObj& txobj = *reinterpret_cast<GLTexObj*>(obj);
 
 	glActiveTexture(GL_TEXTURE0 + g_texmap_start_index + mapid);
-	glBindTexture(GL_TEXTURE_2D, txobj.tex);
+	//glBindTexture(GL_TEXTURE_2D, txobj.tex);
+
+	auto entry = g_texture_cache.find(txobj);
+
+	if (entry == g_texture_cache.end())
+	{
+		g_texture_cache.insert(txobj);
+		entry = g_texture_cache.find(txobj);
+	}
+
+	entry->Bind();
+
+	// texture wrap
+	static const GLenum wraps[] =
+	{
+		GL_CLAMP_TO_EDGE,
+		GL_REPEAT,
+		GL_MIRRORED_REPEAT,
+		GL_REPEAT,
+	};
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wraps[txobj.wrap_s & 0x3]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wraps[txobj.wrap_t & 0x3]);
+
+	// texture filter
+	const GLint filters[] =
+	{
+		GL_NEAREST,
+		GL_LINEAR,
+		GL_NEAREST_MIPMAP_NEAREST,
+		GL_LINEAR_MIPMAP_NEAREST,
+		GL_NEAREST_MIPMAP_LINEAR,
+		GL_LINEAR_MIPMAP_LINEAR,
+		GL_NEAREST,	// blah
+		GL_NEAREST,
+	};
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filters[txobj.minfilt & 0x7]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filters[txobj.magfilt & 0x7]);
 }
 
 inline void ActiveStage(u8 stage)

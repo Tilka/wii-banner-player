@@ -32,6 +32,8 @@ distribution.
 #define 	GX_TEVREG1   2
 #define 	GX_TEVREG2   3
 
+typedef float f32;
+
 // watev
 struct GXTexObj
 {
@@ -45,7 +47,12 @@ struct GXTexObj
 
 struct GXTlutObj
 {
-	u32 val [8];	// TODO: fix this
+	GXTlutObj()
+	{
+		memset(val, 0, sizeof(val));
+	};
+
+	u32 val[8];
 };
 
 struct GXColor
@@ -61,6 +68,8 @@ struct GXColorS10
 typedef void GXFifoObj;
 
 GXFifoObj * 	GX_Init (void *base, u32 size);
+
+//void 	GX_SetViewport (f32 xOrig, f32 yOrig, f32 wd, f32 ht, f32 nearZ, f32 farZ);
 
 u32 	GX_GetTexBufferSize (u16 wd, u16 ht, u32 fmt, u8 mipmap, u8 maxlod);
 

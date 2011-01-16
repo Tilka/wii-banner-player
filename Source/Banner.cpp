@@ -125,16 +125,17 @@ FrameNumber LoadAnimators(std::istream& file, Layout& layout, u8 key_set)
 	return frame_count;
 }
 
-Banner::Banner(const std::string& filename)
+Banner::Banner(const std::string& _filename)
 	: layout_banner(nullptr)
 	, layout_icon(nullptr)
 	, sound(nullptr)
+	, filename(_filename)
 {
 	std::ifstream bnr_file(filename, std::ios::binary | std::ios::in);
 
 	// opening.bnr  archives have 0x600 byte headers
 	// 00000000.app archives have 0x640 byte headers
-	size_t header_bytes = 0x600;
+	header_bytes = 0x600;
 
 	bnr_file.seekg(header_bytes, std::ios::cur);
 
@@ -158,127 +159,127 @@ Banner::Banner(const std::string& filename)
 	bnr_file.seekg(-4, std::ios::cur);
 	DiscIO::CARCFile opening_arc(bnr_file);
 
-	const auto load_layout = [&](const std::string& name) -> Layout*
+	offset_banner = opening_arc.GetFileOffset("meta/" "banner" ".bin");
+	offset_icon = opening_arc.GetFileOffset("meta/" "icon" ".bin");
+	offset_sound = opening_arc.GetFileOffset("meta/" "sound" ".bin");
+}
+
+void Banner::LoadBanner()
+{
+	if (offset_banner && !layout_banner)
+		layout_banner = LoadLayout("Banner", offset_banner, Vec2f(608.f, 456.f));
+}
+
+void Banner::LoadIcon()
+{
+	if (offset_icon && !layout_icon)
+		layout_icon = LoadLayout("Icon", offset_icon, Vec2f(128.f, 96.f));
+}
+
+void Banner::LoadSound()
+{
+	if (offset_sound && !sound)
 	{
-		const auto bin_offset = opening_arc.GetFileOffset("meta/" + name + ".bin");
-		std::cout << name << ".bin offset is: " << bin_offset << '\n';
+		std::ifstream bnr_file(filename, std::ios::binary | std::ios::in);
 
-		if (0 == bin_offset)
-			return nullptr;
-
-		bnr_file.seekg(header_bytes + bin_offset, std::ios::beg);
-
-		// LZ77 decompress .bin file
-		LZ77Decompressor decomp(bnr_file);
-		std::istream& file = decomp.GetStream();
-
-		// load layout
-		std::string lyt_name(name);
-		lyt_name[0] = toupper(lyt_name[0]); // silly
-
-		DiscIO::CARCFile bin_arc(file);
-		const auto brlyt_offset = bin_arc.GetFileOffset("arc/blyt/" + lyt_name + ".brlyt");
-		//std::cout << lyt_name << ".brlyt offset is: " << brlyt_offset << '\n';
-
-		if (0 == brlyt_offset)
-			return nullptr;
-
-		file.seekg(brlyt_offset, std::ios::beg);
-		auto* const layout = new Layout;
-		layout->Load(file);
-
-		// load textures
-		foreach (Texture* texture, layout->resources.textures)
-		{
-			auto const texture_offset = bin_arc.GetFileOffset("arc/timg/" + texture->GetName());
-			if (texture_offset)
-			{
-				file.seekg(texture_offset, std::ios::beg);
-				texture->Load(file);
-			}
-		}
-
-		// load fonts
-		{
-		// this guy is in "User/Wii/shared1"
-		std::ifstream font_file("00000003.app", std::ios::binary | std::ios::in);
-		DiscIO::CARCFile font_arc(font_file);
-
-		foreach (Font* font, layout->resources.fonts)
-		{
-			auto const font_offset = font_arc.GetFileOffset(font->GetName());
-
-			if (font_offset)
-			{
-				font_file.seekg(font_offset, std::ios::beg);
-				font->Load(font_file);
-
-				//std::cout << "font name: " << font->name << '\n';
-			}
-		}
-		}
-
-		FrameNumber length_start = 0, length_loop = 0;
-
-		auto const brlan_start_offset = bin_arc.GetFileOffset("arc/anim/" + lyt_name + "_Start.brlan");
-		size_t brlan_loop_offset = 0;
-
-		//std::cout << lyt_name + "_Start.brlan offset is: " << brlan_start_offset << '\n';
-		if (brlan_start_offset)
-		{
-			file.seekg(brlan_start_offset, std::ios::beg);
-			length_start = LoadAnimators(file, *layout, 0);
-
-			// banner uses 2 brlan files, a starting one and a looping one
-			brlan_loop_offset = bin_arc.GetFileOffset("arc/anim/" + lyt_name + "_Loop.brlan");
-		}
-		else
-		{
-			// banner uses a single repeating brlan
-			brlan_loop_offset = bin_arc.GetFileOffset("arc/anim/" + lyt_name + ".brlan");
-		}
-
-		//std::cout << lyt_name + "[_Loop].brlan offset is: " << brlan_loop_offset << '\n';
-		if (brlan_loop_offset)
-		{
-			file.seekg(brlan_loop_offset, std::ios::beg);
-			length_loop = LoadAnimators(file, *layout, 1);
-		}
-
-		layout->SetLoopStart(length_start);
-		layout->SetLoopEnd(length_start + length_loop);
-		// update everything for frame 0
-		layout->SetFrame(0);
-
-		return layout;
-	};
-
-	layout_banner = load_layout("banner");
-	// crop
-	layout_banner->SetWidth(608.f);
-	layout_banner->SetHeight(456.f);
-
-	layout_icon = load_layout("icon");
-	// crop
-	layout_icon->SetWidth(128.f);
-	layout_icon->SetHeight(96.f);
-
-	// AUDIO!!
-
-	// This is probably the wrong way to do it anyways. Should just
-	// read the filesystem and parse what's available.
-	const auto sound_offset = opening_arc.GetFileOffset("meta/sound.bin");
-	//std::cout << "sound.bin offset is: " << sound_offset << '\n';
-
-	if (sound_offset)
-	{
-		bnr_file.seekg(header_bytes + sound_offset, std::ios::beg);
+		bnr_file.seekg(header_bytes + offset_sound, std::ios::beg);
 		auto* const s = new BannerStream;
 		if (s->Load(bnr_file))
 			sound = s;
 		else
 			delete s;
 	}
+}
+
+Layout* Banner::LoadLayout(const std::string& lyt_name, std::streamoff offset, Vec2f size)
+{
+	std::ifstream bnr_file(filename, std::ios::binary | std::ios::in);
+
+	bnr_file.seekg(header_bytes + offset, std::ios::beg);
+
+	// LZ77 decompress .bin file
+	LZ77Decompressor decomp(bnr_file);
+	std::istream& file = decomp.GetStream();
+
+	DiscIO::CARCFile bin_arc(file);
+	const auto brlyt_offset = bin_arc.GetFileOffset("arc/blyt/" + lyt_name + ".brlyt");
+
+	if (0 == brlyt_offset)
+		return nullptr;
+
+	file.seekg(brlyt_offset, std::ios::beg);
+	auto* const layout = new Layout;
+	layout->Load(file);
+
+	// override size
+	layout->SetWidth(size.x);
+	layout->SetHeight(size.y);
+
+	// load textures
+	foreach (Texture* texture, layout->resources.textures)
+	{
+		auto const texture_offset = bin_arc.GetFileOffset("arc/timg/" + texture->GetName());
+		if (texture_offset)
+		{
+			file.seekg(texture_offset, std::ios::beg);
+			texture->Load(file);
+		}
+	}
+
+	// load fonts
+	{
+	// this guy is in "User/Wii/shared1"
+	std::ifstream font_file("00000003.app", std::ios::binary | std::ios::in);
+	DiscIO::CARCFile font_arc(font_file);
+
+	foreach (Font* font, layout->resources.fonts)
+	{
+		auto const font_offset = font_arc.GetFileOffset(font->GetName());
+
+		if (font_offset)
+		{
+			font_file.seekg(font_offset, std::ios::beg);
+			font->Load(font_file);
+
+			//std::cout << "font name: " << font->name << '\n';
+		}
+	}
+	}
+
+	// load animations
+	FrameNumber length_start = 0, length_loop = 0;
+
+	auto const brlan_start_offset = bin_arc.GetFileOffset("arc/anim/" + lyt_name + "_Start.brlan");
+	size_t brlan_loop_offset = 0;
+
+	//std::cout << lyt_name + "_Start.brlan offset is: " << brlan_start_offset << '\n';
+	if (brlan_start_offset)
+	{
+		file.seekg(brlan_start_offset, std::ios::beg);
+		length_start = LoadAnimators(file, *layout, 0);
+
+		// banner uses 2 brlan files, a starting one and a looping one
+		brlan_loop_offset = bin_arc.GetFileOffset("arc/anim/" + lyt_name + "_Loop.brlan");
+	}
+	else
+	{
+		// banner uses a single repeating brlan
+		brlan_loop_offset = bin_arc.GetFileOffset("arc/anim/" + lyt_name + ".brlan");
+	}
+
+	//std::cout << lyt_name + "[_Loop].brlan offset is: " << brlan_loop_offset << '\n';
+	if (brlan_loop_offset)
+	{
+		file.seekg(brlan_loop_offset, std::ios::beg);
+		length_loop = LoadAnimators(file, *layout, 1);
+	}
+
+	layout->SetLoopStart(length_start);
+	layout->SetLoopEnd(length_start + length_loop);
+	// update everything for frame 0
+	layout->SetFrame(0);
+
+	return layout;
 }
 
 Banner::~Banner()

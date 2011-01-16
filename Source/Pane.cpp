@@ -65,7 +65,7 @@ void Pane::SetFrame(FrameNumber frame, u8 key_set)
 		pane->SetFrame(frame, key_set);
 }
 
-void Pane::Render(const Resources& resources, u8 parent_alpha, Vec2 adjust) const
+void Pane::Render(const Resources& resources, u8 parent_alpha, Vec2f adjust) const
 {
 	if (!GetVisible() || GetHide())
 		return;
@@ -197,7 +197,7 @@ void Quad::Draw(const Resources& resources, u8 render_alpha) const
 			MultiplyColors(vertex_colors[v].a, render_alpha));	// apply alpha
 
 		// tex coords
-		GLenum target = GL_TEXTURE0;
+		GLenum target = GL_TEXTURE1;
 		foreach (auto& tc, tex_coords)
 			glMultiTexCoord2fv(target++, &tc.coords[v].s);
 

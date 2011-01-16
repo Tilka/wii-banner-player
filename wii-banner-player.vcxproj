@@ -161,6 +161,7 @@
     <ClInclude Include="Source\Material.h" />
     <ClInclude Include="Source\Pane.h" />
     <ClInclude Include="Source\Picture.h" />
+    <ClInclude Include="Source\QueueThread.h" />
     <ClInclude Include="Source\Sound.h" />
     <ClInclude Include="Source\Textbox.h" />
     <ClInclude Include="Source\Texture.h" />

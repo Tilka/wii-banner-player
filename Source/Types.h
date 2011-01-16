@@ -48,15 +48,37 @@ distribution.
 #define foreach(e, c) for (e : c)
 #endif
 
+template <typename T>
 struct Vec2
 {
-	float x, y;
+	Vec2() {}
+
+	Vec2(T _x, T _y) : x(_x), y(_y) {}
+
+	bool operator!=(const Vec2& rhs) const
+	{
+		return x != rhs.x || y != rhs.y;
+	}
+
+	bool operator==(const Vec2& rhs) const
+	{
+		return !(*this != rhs);
+	}
+
+	T x, y;
 };
 
+typedef Vec2<float> Vec2f;
+typedef Vec2<int> Vec2i;
+
+template <typename T>
 struct Vec3
 {
-	float x, y, z;
+	T x, y, z;
 };
+
+typedef Vec3<float> Vec3f;
+typedef Vec3<int> Vec3i;
 
 class FourCC
 {

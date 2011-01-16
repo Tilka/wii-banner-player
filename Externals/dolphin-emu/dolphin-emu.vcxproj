@@ -134,16 +134,19 @@
     <ClInclude Include="Source\Common.h" />
     <ClInclude Include="Source\CommonFuncs.h" />
     <ClInclude Include="Source\CommonTypes.h" />
+    <ClInclude Include="Source\FifoQueue.h" />
     <ClInclude Include="Source\FileBlob.h" />
     <ClInclude Include="Source\FileHandlerARC.h" />
     <ClInclude Include="Source\FileUtil.h" />
     <ClInclude Include="Source\TextureDecoder.h" />
+    <ClInclude Include="Source\Thread.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Blob.cpp" />
     <ClCompile Include="Source\FileBlob.cpp" />
     <ClCompile Include="Source\FileHandlerARC.cpp" />
     <ClCompile Include="Source\TextureDecoder.cpp" />
+    <ClCompile Include="Source\Thread.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

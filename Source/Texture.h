@@ -38,9 +38,18 @@ namespace WiiBanner
 class Texture : public Named
 {
 public:
+	Texture() : img_ptr(nullptr), tlut_ptr(nullptr), tlut_name(0) {}
+	~Texture();
+
 	void Load(std::istream& file);
 
 	GXTexObj texobj;
+
+private:
+	char* img_ptr;
+	char* tlut_ptr;
+
+	u32 tlut_name;
 };
 
 class TextureList : public std::vector<Texture*>

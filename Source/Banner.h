@@ -40,10 +40,23 @@ public:
 	Layout* GetIcon() const { return layout_icon; }
 	BannerStream* GetSound() const { return sound; }
 
-private:
-	Layout *layout_banner, *layout_icon;
+	void LoadBanner();
+	void LoadIcon();
+	void LoadSound();
 
+	void UnloadBanner() { delete layout_banner; layout_banner = nullptr; }
+	void UnloadIcon() { delete layout_icon; layout_icon = nullptr; }
+	void UnloadSound() { delete sound; sound = nullptr; }
+
+private:
+	Layout* LoadLayout(const std::string& lyt_name, std::streamoff offset, Vec2f size);
+
+	std::streamoff offset_banner, offset_icon, offset_sound, header_bytes;
+
+	Layout *layout_banner, *layout_icon;
 	BannerStream* sound;
+
+	const std::string filename;
 };
 
 }

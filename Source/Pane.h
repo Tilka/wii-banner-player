@@ -101,7 +101,7 @@ public:
 	void Load(std::istream& file);
 	virtual ~Pane();
 
-	void Render(const Resources& resources, u8 parent_alpha, Vec2 adjust) const;
+	void Render(const Resources& resources, u8 parent_alpha, Vec2f adjust) const;
 	void SetFrame(FrameNumber frame, u8 key_set);
 
 	bool GetVisible() const { return GetBit(flags, FLAG_VISIBLE); }
@@ -128,14 +128,14 @@ public:
 	u8 GetAlpha() const { return alpha; }
 	void SetAlpha(u8 _alpha) { alpha = _alpha; }
 
-	const Vec3& GetTranslate() const { return translate; }
-	void SetTranslate(const Vec3& _translate) { translate = _translate; }
+	const Vec3f& GetTranslate() const { return translate; }
+	void SetTranslate(const Vec3f& _translate) { translate = _translate; }
 
-	const Vec3& GetRotate() const { return rotate; }
-	void SetRotate(const Vec3& _rotate) { rotate = _rotate; }
+	const Vec3f& GetRotate() const { return rotate; }
+	void SetRotate(const Vec3f& _rotate) { rotate = _rotate; }
 
-	const Vec2& GetScale() const { return scale; }
-	void SetScale(const Vec2& _scale) { scale = _scale; }
+	const Vec2f& GetScale() const { return scale; }
+	void SetScale(const Vec2f& _scale) { scale = _scale; }
 
 	Pane* FindPane(const std::string& name);	// recursive
 
@@ -160,8 +160,8 @@ private:
 	u8 alpha;
 	bool hide;	// used by the groups
 
-	Vec3 translate, rotate;
-	Vec2 scale;
+	Vec3f translate, rotate;
+	Vec2f scale;
 	float width, height;
 };
 

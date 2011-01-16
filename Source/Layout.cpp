@@ -240,7 +240,7 @@ void Layout::Render(float aspect_ratio) const
 	glLoadIdentity();
 
 	// TODO: make this work good :p
-	Vec2 adjust;
+	Vec2f adjust;
 	adjust.x = aspect_ratio / 4 * 3;
 	adjust.y = 1.f;
 
