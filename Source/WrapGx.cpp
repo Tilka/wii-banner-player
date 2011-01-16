@@ -433,9 +433,9 @@ void CompiledTevStages::Compile(const TevStages& stages)
 
 	vert_ss << "gl_FrontColor = gl_Color;";
 	vert_ss << "gl_BackColor = gl_Color;";
-		
+	
 	for (unsigned int i = 0; i != sampler_count; ++i)
-		vert_ss << "gl_TexCoord[" << i << "] = gl_TextureMatrix[" << i << "] * gl_MultiTexCoord" << 1 << ";";
+		vert_ss << "gl_TexCoord[" << i << "] = gl_TextureMatrix[" << i << "] * gl_MultiTexCoord" << i << ";";
 
 	vert_ss << "gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;";
 

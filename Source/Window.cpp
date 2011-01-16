@@ -60,12 +60,12 @@ void Window::Load(std::istream& file)
 	});
 }
 
-void Window::Draw(const Resources& resources, u8 render_alpha) const
+void Window::Draw(const Resources& resources, u8 render_alpha, Vec2f adjust) const
 {
 	// TODO: handle "inflation"
 	// TODO: handle "frames" and "texture_flip"
 
-	Quad::Draw(resources, render_alpha);
+	Quad::Draw(resources, render_alpha, adjust);
 }
 
 }

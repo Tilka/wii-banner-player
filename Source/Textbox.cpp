@@ -64,7 +64,7 @@ void Textbox::Load(std::istream& file)
 	std::wcout << L"Text: " << text << L'\n';
 }
 
-void Textbox::Draw(const Resources& resources, u8 render_alpha) const
+void Textbox::Draw(const Resources& resources, u8 render_alpha, Vec2f adjust) const
 {
 	// TODO:
 	return;

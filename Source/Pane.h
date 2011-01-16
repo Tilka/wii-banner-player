@@ -146,7 +146,7 @@ protected:
 	void ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data);
 
 private:
-	virtual void Draw(const Resources& resources, u8 render_alpha) const {};
+	virtual void Draw(const Resources& resources, u8 render_alpha, Vec2f adjust) const {};
 
 	enum : u8
 	{
@@ -186,7 +186,7 @@ protected:
 
 	void ProcessHermiteKey(const KeyType& type, float value);
 
-	void Draw(const Resources& resources, u8 render_alpha) const;
+	void Draw(const Resources& resources, u8 render_alpha, Vec2f adjust) const;
 
 private:
 	struct TexCoords

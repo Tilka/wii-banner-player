@@ -93,7 +93,7 @@ void Pane::Render(const Resources& resources, u8 parent_alpha, Vec2f adjust) con
 	glScalef(GetScale().x, GetScale().y, 1.f);
 
 	// render self
-	Draw(resources, render_alpha);
+	Draw(resources, render_alpha, adjust);
 
 	// render children
 	foreach (Pane* pane, panes)
@@ -184,7 +184,7 @@ void Quad::Load(std::istream& file)
 		ReadBEArray(file, &tex_coords[0].coords->s, sizeof(TexCoords) / sizeof(float) * tex_coord_count);
 }
 
-void Quad::Draw(const Resources& resources, u8 render_alpha) const
+void Quad::Draw(const Resources& resources, u8 render_alpha, Vec2f adjust) const
 {
 	if (material_index < resources.materials.size())
 		resources.materials[material_index]->Apply(resources.textures);
@@ -197,9 +197,18 @@ void Quad::Draw(const Resources& resources, u8 render_alpha) const
 			MultiplyColors(vertex_colors[v].a, render_alpha));	// apply alpha
 
 		// tex coords
-		GLenum target = GL_TEXTURE1;
-		foreach (auto& tc, tex_coords)
-			glMultiTexCoord2fv(target++, &tc.coords[v].s);
+		if (1 == tex_coords.size())
+		{
+			auto* const fv = &tex_coords.front().coords[v].s;
+			for (GLenum t = GL_TEXTURE0; t != GL_TEXTURE8; ++t)
+				glMultiTexCoord2fv(t, fv);
+		}
+		else
+		{
+			GLenum target = GL_TEXTURE0;
+			foreach (auto& tc, tex_coords)
+				glMultiTexCoord2fv(target++, &tc.coords[v].s);
+		}
 
 		// position
 		glVertex2f(x, y);
@@ -208,7 +217,7 @@ void Quad::Draw(const Resources& resources, u8 render_alpha) const
 	glPushMatrix();
 
 	// size
-	glScalef(GetWidth(), GetHeight(), 1.f);
+	glScalef(GetWidth() * adjust.x, GetHeight() * adjust.y, 1.f);
 
 	// origin
 	glTranslatef(-0.5f * GetOriginX(), -0.5f * GetOriginY(), 0.f);

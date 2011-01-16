@@ -53,6 +53,7 @@ void DrawBannerBorder()
 	glColor4f(0, 0, 0, 1.f);
 	glUseProgram(0);
 
+	// bottom
 	glBegin(GL_QUADS);
 	glVertex2f(-450.f, -112.f);
 	glVertex2f(450.f, -112.f);
@@ -100,7 +101,22 @@ public:
 		if (!(banner && banner->GetIcon()))
 			return;
 
-		//glClearColor(0.f, 0.f, 0.f, 1.f);
+		// why doesn't this work
+#if 0
+		glClearColor(0.f, 0.f, 0.f, 1.f);
+#else
+		glLoadIdentity();
+		glOrtho(-1, 1, -1, 1, -1, 1);
+
+		glColor4f(0.f, 0.f, 0.f, 1.f);
+
+		glBegin(GL_QUADS);
+		glVertex2f(-2, -2);
+		glVertex2f(2, -2);
+		glVertex2f(2, 2);
+		glVertex2f(-2, 2);
+		glEnd();
+#endif
 
 		// TODO: don't need to push everything
 		glPushAttrib(-1);
@@ -254,6 +270,8 @@ int main(int argc, char* argv[])
 
 	mouse_down_position = mouse_position;
 
+	bool mouse_click = false;
+
 	Vec2f tile_adjust(0.f, 0.f);
 
 	auto const draw_tile = [&](const Tile& tile)
@@ -266,6 +284,9 @@ int main(int argc, char* argv[])
 		{
 			adjust.x = mouse_position.x / g_tile_size.x - mouse_down_position.x / g_tile_size.x;
 			adjust.y = mouse_position.y / g_tile_size.y - mouse_down_position.y / g_tile_size.y;
+
+			if (adjust != Vec2f(0.f, 0.f))
+				mouse_click = false;
 
 			static const float slide_speed = 0.2f;
 
@@ -347,6 +368,8 @@ int main(int argc, char* argv[])
 					mouse_down_position = mouse_position;
 					tile_selected = FindTile(Vec2f(mouse_position.x / g_tile_size.x, mouse_position.y / g_tile_size.y));
 					tile_adjust = Vec2f(0.f, 0.f);
+
+					mouse_click = true;
 				}
 				break;
 
@@ -360,26 +383,29 @@ int main(int argc, char* argv[])
 					Tile* const tile_dest = FindTile(Vec2f(dest.x, dest.y));
 					if (tile_dest)
 					{
-						if (tile_dest != tile_selected)
-							std::swap(tile_dest->position, tile_selected->position);
-						else
+						if (mouse_click)
 						{
 							worker.Push([&](Tile* tile)
 							{
-								tile->banner->LoadBanner();
-								tile->banner->GetBanner()->SetLanguage("ENG");
+								if (full_banner != tile->banner)
+								{
+									disable_full_banner();
 
-								tile->banner->LoadSound();
+									tile->banner->LoadBanner();
+									tile->banner->GetBanner()->SetLanguage("ENG");
 
-								disable_full_banner();
+									tile->banner->LoadSound();
 
-								g_tiles_lock.Enter();
-								full_banner = tile->banner;
-								full_banner->GetSound()->Play();
-								g_tiles_lock.Leave();
+									g_tiles_lock.Enter();
+									full_banner = tile->banner;
+									full_banner->GetSound()->Play();
+									g_tiles_lock.Leave();
+								}
 
 							}, tile_selected);
 						}
+						else
+							std::swap(tile_dest->position, tile_selected->position);
 					}
 					else
 						tile_selected->position = dest;
