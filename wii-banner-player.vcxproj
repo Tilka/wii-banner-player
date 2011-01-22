@@ -156,6 +156,7 @@
     <ClInclude Include="Source\Banner.h" />
     <ClInclude Include="Source\Endian.h" />
     <ClInclude Include="Source\Font.h" />
+    <ClInclude Include="Source\Funcs.h" />
     <ClInclude Include="Source\Layout.h" />
     <ClInclude Include="Source\LZ77.h" />
     <ClInclude Include="Source\Material.h" />

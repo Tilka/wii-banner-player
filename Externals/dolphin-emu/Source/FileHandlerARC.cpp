@@ -22,7 +22,7 @@
 #include "Blob.h"
 
 // hacks
-#include "../../../Source/Types.h"
+#include "../../../Source/Endian.h"
 
 #define ARC_ID 0x55aa382d
 

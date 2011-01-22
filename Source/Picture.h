@@ -26,8 +26,6 @@ distribution.
 
 #include "Pane.h"
 
-#include <vector>
-
 namespace WiiBanner
 {
 

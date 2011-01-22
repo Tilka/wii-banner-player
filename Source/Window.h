@@ -21,12 +21,10 @@ misrepresented as being the original software.
 distribution.
 */
 
-#include "Picture.h"
-
-#include "WrapGx.h"
-
 #ifndef WII_BNR_WINDOW_H_
 #define WII_BNR_WINDOW_H_
+
+#include "Pane.h"
 
 namespace WiiBanner
 {

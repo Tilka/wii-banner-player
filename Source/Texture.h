@@ -24,13 +24,10 @@ distribution.
 #ifndef WII_BNR_TEXTURE_H_
 #define WII_BNR_TEXTURE_H_
 
-#include <list>
-#include <string>
 #include <vector>
 
-#include "Types.h"
-
 #include "WrapGx.h"
+#include "Types.h"
 
 namespace WiiBanner
 {

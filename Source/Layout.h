@@ -24,16 +24,15 @@ distribution.
 #ifndef WII_BNR_LAYOUT_H_
 #define WII_BNR_LAYOUT_H_
 
+#include <map>
+#include <list>
+#include <vector>
+
 #include "Pane.h"
 #include "Material.h"
 #include "Texture.h"
 #include "Font.h"
-
 #include "Types.h"
-
-#include <map>
-#include <list>
-#include <vector>
 
 namespace WiiBanner
 {
@@ -53,7 +52,7 @@ public:
 	void Load(std::istream& file);
 	~Layout();
 
-	void Render(float aspect_ratio) const;
+	void Render(float aspect_ratio, float zoom = 1.f) const;
 
 	FrameNumber GetFrame() const { return frame_current; }
 	void SetFrame(FrameNumber frame_number);

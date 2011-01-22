@@ -21,11 +21,11 @@ misrepresented as being the original software.
 distribution.
 */
 
-#include "Textbox.h"
-
-#include "Layout.h"
-
 #include <gl/glew.h>
+
+#include "Textbox.h"
+#include "Layout.h"
+#include "Endian.h"
 
 namespace WiiBanner
 {
@@ -66,9 +66,6 @@ void Textbox::Load(std::istream& file)
 
 void Textbox::Draw(const Resources& resources, u8 render_alpha, Vec2f adjust) const
 {
-	// TODO:
-	return;
-
 	if (material_index < resources.materials.size())
 		resources.materials[material_index]->Apply(resources.textures);
 

@@ -23,8 +23,6 @@ distribution.
 
 #include "Picture.h"
 
-#include <gl/glew.h>
-
 namespace WiiBanner
 {
 

@@ -24,10 +24,10 @@ distribution.
 #ifndef WII_BNR_LZ77_H_
 #define WII_BNR_LZ77_H_
 
-#include "CommonTypes.h"
-#include "Endian.h"
-
 #include <sstream>
+
+#include "Endian.h"
+#include "Types.h"
 
 static enum : u32
 {
@@ -72,8 +72,7 @@ public:
 				if (flags & 0x80)
 				{
 					u16 info;
-					in >> LE >> info;
-					info = Common::swap16(info);
+					in >> BE >> info;
 
 					const u8 num = 3 + (info >> 12);
 					const u16 disp = info & 0xFFF;

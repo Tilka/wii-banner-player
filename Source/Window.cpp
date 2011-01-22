@@ -21,9 +21,10 @@ misrepresented as being the original software.
 distribution.
 */
 
-#include "Window.h"
-
 #include <gl/glew.h>
+
+#include "Window.h"
+#include "Endian.h"
 
 namespace WiiBanner
 {
@@ -56,7 +57,7 @@ void Window::Load(std::istream& file)
 		Frame frame;
 		file >> BE >> frame.material_index >> frame.texture_flip;
 
-		frames.push_back(frame);
+		frames.push_back(std::move(frame));
 	});
 }
 

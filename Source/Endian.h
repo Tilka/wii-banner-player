@@ -24,42 +24,13 @@ distribution.
 #ifndef WII_BNR_ENDIAN_H_
 #define WII_BNR_ENDIAN_H_
 
-#include "CommonFuncs.h"
-
 #include <iostream>
 
-namespace Common
-{
+#include "Types.h"
 
 // S : size in bytes
 template <int S>
-inline void SwapData(u8* data);
-
-template <>
-inline void SwapData<1>(u8* data)
-{
-	// nothing
-}
-
-template <>
-inline void SwapData<2>(u8* data)
-{
-	*reinterpret_cast<u16*>(data) = swap16(data);
-}
-
-template <>
-inline void SwapData<4>(u8* data)
-{
-	*reinterpret_cast<u32*>(data) = swap32(data);
-}
-
-template <>
-inline void SwapData<8>(u8* data)
-{
-	*reinterpret_cast<u64*>(data) = swap64(data);
-}
-
-}
+void SwapData(u8* data);
 
 class BEStream
 {
@@ -74,7 +45,7 @@ public:
 		static_assert(std::is_arithmetic<V>::value, "BEStream operator >> parameter must be arithmetic");
 
 		m_stream.read(reinterpret_cast<char*>(&rhs), sizeof(V));
-		Common::SwapData<sizeof(V)>(reinterpret_cast<u8*>(&rhs));
+		SwapData<sizeof(V)>(reinterpret_cast<u8*>(&rhs));
 
 		return *this;
 	}
@@ -145,5 +116,13 @@ void ReadLEArray(std::istream& file, T* data, unsigned int size)
 	for (unsigned int i = 0; i != size; ++i)
 		lestrm >> data[i];
 }
+
+inline std::istream& operator>>(std::istream& lhs, FourCC& rhs)
+{
+	lhs >> BE >> rhs.data;
+	return lhs;
+}
+
+std::ostream& operator<<(std::ostream& lhs, const FourCC& rhs);
 
 #endif

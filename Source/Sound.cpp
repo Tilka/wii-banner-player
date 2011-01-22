@@ -21,11 +21,17 @@ misrepresented as being the original software.
 distribution.
 */
 
-#include "CommonTypes.h"
-#include "Sound.h"
 #include <iostream>
-#include "Types.h"
+
+#include <SFML/Audio.hpp>
+
+// from dolphin
+#include "CommonTypes.h"
+
+#include "Sound.h"
 #include "LZ77.h"
+#include "Endian.h"
+#include "Types.h"
 
 namespace WiiBanner
 {
@@ -217,6 +223,34 @@ struct BNS
 	}
 };
 
+class BannerStream : public sf::SoundStream
+{
+public:
+	BannerStream() : position(0), loop_position(-1) {}
+
+	bool Load(std::istream& file);
+
+	void Restart() { Stop(); position = 0; }
+
+private:
+	virtual bool OnStart();
+	virtual bool OnGetData(sf::SoundStream::Chunk& Data);
+
+	std::vector<sf::Int16> samples;
+	std::size_t position;
+	std::size_t loop_position;	// -1 means don't loop
+
+	static const std::size_t buffer_size = 40000;	// size of audio chunks to stream
+
+	enum SoundFormat
+	{
+		FORMAT_BNS,
+		FORMAT_WAV,
+		FORMAT_AIFF
+	};
+	SoundFormat format;
+};
+
 bool BannerStream::Load(std::istream& file)
 {
 	BNS bns_file;
@@ -317,6 +351,46 @@ bool BannerStream::OnGetData(sf::SoundStream::Chunk& chunk)
 	}
 
 	return true;
+}
+
+Sound::~Sound()
+{
+	delete stream;
+}
+
+bool Sound::Load(std::istream& file)
+{
+	auto* const s = new BannerStream;
+	if (s->Load(file))
+	{
+		stream = s;
+		return true;
+	}
+	else
+	{
+		delete s;
+		return false;
+	}
+}
+
+void Sound::Play()
+{
+	stream->Play();
+}
+
+void Sound::Pause()
+{
+	stream->Pause();
+}
+
+void Sound::Stop()
+{
+	stream->Stop();
+}
+
+void Sound::Restart()
+{
+	stream->Restart();
 }
 
 }

@@ -23,45 +23,56 @@ distribution.
 
 #include <iostream>
 #include <fstream>
-
-#include <iterator>
 #include <algorithm>
-
 #include <list>
 #include <map>
 #include <vector>
 #include <sstream>
 #include <string>
 
-#include "Thread.h"
-
-#include "Banner.h"
-#include "Types.h"
-
-#include "WrapGx.h"
-#include "QueueThread.h"
+// hax
+#define WIN32_LEAN_AND_MEAN
+#define _WINUSER_
 
 #include <gl/glew.h>
 
 #include <SFML/Window.hpp>
-#include <SFML/Audio.hpp>
+
+#include "Banner.h"
+#include "QueueThread.h"
+#include "Types.h"
 
 #define NO_CONSOLE 0
 
-void DrawBannerBorder()
+void DrawBannerBorder(/*float width*/)
 {
+	//width /= 2;
+
 	glColor4f(0, 0, 0, 1.f);
 	glUseProgram(0);
 
-	// bottom
 	glBegin(GL_QUADS);
+	// bottom
 	glVertex2f(-450.f, -112.f);
 	glVertex2f(450.f, -112.f);
 	glVertex2f(450.f, -400.f);
 	glVertex2f(-450.f, -400.f);
+	// top
+	//glVertex2f(-450.f, 400.f);
+	//glVertex2f(450.f, 400.f);
+	//glVertex2f(450.f, 222.f);
+	//glVertex2f(-450.f, 222.f);
+	//// left
+	//glVertex2f(-450.f, 400.f);
+	//glVertex2f(-(width - 6), 400.f);
+	//glVertex2f(-(width - 6), -400.f);
+	//glVertex2f(-450.f, -400.f);
+	//// right
+	//glVertex2f(width - 6, 400.f);
+	//glVertex2f(450.f, 400.f);
+	//glVertex2f(450.f, -400.f);
+	//glVertex2f(width - 6, -400.f);
 	glEnd();
-
-	// TODO: need to cover some of the top and sides
 }
 
 Vec2i g_tile_size;
@@ -71,8 +82,8 @@ void DrawIconBorder()
 	glUseProgram(0);
 
 	const float
-		x = g_tile_size.x / 2,
-		y = g_tile_size.y / 2;
+		x = (float)(g_tile_size.x / 2),
+		y = (float)(g_tile_size.y / 2);
 
 	glBegin(GL_LINE_STRIP);
 	glVertex2f(-x * 2, -y + 1);
@@ -146,6 +157,8 @@ void ForEachFile(const std::string& search, F func)
 
 		FindClose(find_handle);
 	}
+#else
+	// TODO
 #endif
 }
 
@@ -205,6 +218,40 @@ Tile* FindTile(const Vec2f& pos)
 	return ret;
 }
 
+// TODO: make some sort of thread pool instead of this
+QueueThread g_worker;
+
+enum
+{
+	PRIORITY_TILE = 1,
+	PRIORITY_BANNER = 2,
+};
+
+void LoadTile(const std::string& fname)
+{
+	g_worker.Push(PRIORITY_TILE, [](const std::string& fname)
+	{
+		auto* const bnr = new WiiBanner::Banner(fname);
+
+		bnr->LoadIcon();
+		if (bnr->GetIcon())
+		{
+			bnr->GetIcon()->SetLanguage("ENG");
+
+			Tile* const tile = new Tile;
+			tile->banner = bnr;
+
+			AddTile(tile);
+
+			// this sleep just makes it look cool :p
+			Common::SleepCurrentThread(50);
+		}
+		else
+			delete bnr;
+
+	}, fname);
+}
+
 #if defined(_WIN32) && !defined(DEBUG) && NO_CONSOLE
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -223,37 +270,21 @@ int main(int argc, char* argv[])
 	g_tile_size = Vec2i(170, 96);
 #endif
 
-	QueueThread worker;
-
-	worker.Push([]
+	auto const load_tiles = []
 	{
-		auto const add_extension = [&](const char ext[])
+		auto const add_extension = [](const char ext[])
 		{
-			ForEachFile(ext, [&](const std::string& fname)
+			ForEachFile(ext, [](const std::string& fname)
 			{
-				auto* const bnr = new WiiBanner::Banner(fname);
-
-				bnr->LoadIcon();
-				if (bnr->GetIcon())
-				{
-					bnr->GetIcon()->SetLanguage("ENG");
-
-					Tile* const tile = new Tile;
-					tile->banner = bnr;
-
-					AddTile(tile);
-
-					// this sleep just makes it look cool :p
-					Common::SleepCurrentThread(50);
-				}
-				else
-					delete bnr;
+				LoadTile(fname);
 			});
 		};
 
 		add_extension("*.bnr");
 		add_extension("*.app");
-	});
+	};
+
+	load_tiles();
 
 	static const float
 		min_aspect = 4.f / 3,
@@ -358,7 +389,7 @@ int main(int argc, char* argv[])
 			case sf::Event::MouseButtonPressed:
 				if (full_banner)
 				{
-					worker.Push([&]
+					g_worker.Push(PRIORITY_BANNER, [&]
 					{
 						disable_full_banner();
 					});
@@ -385,16 +416,16 @@ int main(int argc, char* argv[])
 					{
 						if (mouse_click)
 						{
-							worker.Push([&](Tile* tile)
+							g_worker.Push(PRIORITY_BANNER, [&](Tile* tile)
 							{
 								if (full_banner != tile->banner)
 								{
-									disable_full_banner();
-
 									tile->banner->LoadBanner();
 									tile->banner->GetBanner()->SetLanguage("ENG");
 
 									tile->banner->LoadSound();
+
+									disable_full_banner();
 
 									g_tiles_lock.Enter();
 									full_banner = tile->banner;
@@ -423,6 +454,16 @@ int main(int argc, char* argv[])
 			case sf::Event::KeyPressed:
 				switch (ev.Key.Code)
 				{
+					// reload all tiles
+				case sf::Key::Back:
+					g_worker.Clear();
+					full_banner = nullptr;
+					foreach (Tile* tile, g_tiles)
+						delete tile;
+					g_tiles.clear();
+					load_tiles();
+					break;
+
 					// pause resume playback
 				case sf::Key::Space:
 					banner_play ^= true;
@@ -463,10 +504,10 @@ int main(int argc, char* argv[])
 
 			// TODO: don't need to push everything
 			glPushAttrib(-1);
-			full_banner->GetBanner()->Render(render_aspect);
+			full_banner->GetBanner()->Render(render_aspect, 608.f / (608 - 12));	// crop off a bit
 			glPopAttrib();
 
-			DrawBannerBorder();
+			DrawBannerBorder(/*608.f * render_aspect / min_aspect*/);
 
 			if (banner_play)
 				full_banner->GetBanner()->AdvanceFrame();

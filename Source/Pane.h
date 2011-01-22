@@ -24,58 +24,11 @@ distribution.
 #ifndef WII_BNR_PANE_H_
 #define WII_BNR_PANE_H_
 
-#include "Types.h"
-
 #include <vector>
 
 #include "Animator.h"
-#include "Material.h"
-
-// TODO: put all of this crap somewhere else
-template <typename O, typename C, typename F>
-void ReadOffsetList(std::istream& file, C count, std::streamoff origin, F func, std::streamoff pad = 0)
-{
-	std::streamoff next_offset = file.tellg();
-
-	while (count--)
-	{
-		file.seekg(next_offset, std::ios::beg);
-
-		O offset;
-		file >> BE >> offset;
-		file.seekg(pad, std::ios::cur);
-
-		next_offset = file.tellg();
-
-		file.seekg(origin + offset, std::ios::beg);
-		func();
-	}
-
-	file.seekg(next_offset, std::ios::beg);
-}
-
-// multiply 2 color components
-// assumes u8s, takes any type to avoid multiple conversions
-template <typename C1, typename C2>
-inline u8 MultiplyColors(C1 c1, C2 c2)
-{
-	return (u16)c1 * c2 / 0xff;
-}
-
-template <typename B, typename N>
-void SetBit(B& flags, N bit, bool state)
-{
-	if (state)
-		flags |= (1 << bit);
-	else
-		flags &= ~(1 << bit);
-}
-
-template <typename B, typename N>
-bool GetBit(const B& flags, N bit)
-{
-	return !!(flags & (1 << bit));
-}
+#include "Funcs.h"
+#include "WrapGx.h"
 
 namespace WiiBanner
 {

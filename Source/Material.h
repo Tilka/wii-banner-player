@@ -24,12 +24,8 @@ distribution.
 #ifndef WII_BNR_MATERIAL_H_
 #define WII_BNR_MATERIAL_H_
 
-#include "Types.h"
-
 #include "Animator.h"
 #include "Texture.h"
-
-#include "WrapGx.h"
 
 namespace WiiBanner
 {

@@ -24,40 +24,26 @@ distribution.
 #ifndef WII_BNR_SOUND_H_
 #define WII_BNR_SOUND_H_
 
-#include <sstream>
-#include <SFML/Audio.hpp>
-
 namespace WiiBanner
 {
 
-class BannerStream : public sf::SoundStream
+class BannerStream;
+
+class Sound
 {
 public:
-	BannerStream() : position(0), loop_position(-1) {}
+	Sound() : stream(nullptr) {}
+	~Sound();
 
-	~BannerStream() { Stop(); }	// TODO: this is probably already done by sf::SoundStream
+	bool Load(std::istream& file);
 
-	bool Load(std::istream& in);
-
-	void Restart() { Stop(); position = 0; }
+	void Play();
+	void Pause();
+	void Stop();
+	void Restart();
 
 private:
-	virtual bool OnStart();
-	virtual bool OnGetData(sf::SoundStream::Chunk& Data);
-
-	std::vector<sf::Int16> samples;
-	std::size_t position;
-	std::size_t loop_position;	// -1 means don't loop
-
-	static const std::size_t buffer_size = 40000;	// size of audio chunks to stream
-
-	enum SoundFormat
-	{
-		FORMAT_BNS,
-		FORMAT_WAV,
-		FORMAT_AIFF
-	};
-	SoundFormat format;
+	BannerStream* stream;
 };
 
 }

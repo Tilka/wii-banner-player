@@ -31,11 +31,12 @@ distribution.
 #include <vector>
 #include <sstream>
 
+// from dolphin
 #include "TextureDecoder.h"
 
 #include "WrapGx.h"
 
-#include "Types.h"
+#include "Funcs.h"
 
 static u8 g_texture_decode_buffer[1024 * 1024 * 4];
 

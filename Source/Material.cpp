@@ -21,9 +21,11 @@ misrepresented as being the original software.
 distribution.
 */
 
-#include "Material.h"
-
 #include <gl/glew.h>
+
+#include "Material.h"
+#include "Endian.h"
+#include "Funcs.h"
 
 namespace WiiBanner
 {
@@ -73,7 +75,7 @@ void Material::Load(std::istream& file)
 		TextureMap map;
 		file >> BE >> map.tex_index >> map.wrap_s >> map.wrap_t;
 
-		texture_maps.push_back(map);
+		texture_maps.push_back(std::move(map));
 	}
 
 	// texture srt
@@ -83,7 +85,7 @@ void Material::Load(std::istream& file)
 
 		file >> BE >> srt.translate.x >> srt.translate.y >> srt.rotate >> srt.scale.x >> srt.scale.y;
 
-		texture_srts.push_back(srt);
+		texture_srts.push_back(std::move(srt));
 	}
 	//if (!flags.texture_srt)
 	//{
@@ -93,7 +95,7 @@ void Material::Load(std::istream& file)
 	//	srt.rotate = srt.translate.x = srt.translate.y = 0.f;
 	//	srt.scale.x = srt.scale.y = 1.f;
 
-	//	texture_srts.push_back(srt);
+	//	texture_srts.push_back(std::move(srt));
 	//}
 
 	// texture coord gen
@@ -104,7 +106,7 @@ void Material::Load(std::istream& file)
 		file >> BE >> coord.tgen_type >> coord.tgen_src >> coord.mtrx_src;
 		file.seekg(1, std::ios::cur);
 
-		texture_coord_gens.push_back(coord);
+		texture_coord_gens.push_back(std::move(coord));
 	}
 	//if (!flags.texture_coord)
 	//{
@@ -113,7 +115,7 @@ void Material::Load(std::istream& file)
 
 	//	coord.mtrx_src = 30;
 
-	//	texture_coord_gens.push_back(coord);
+	//	texture_coord_gens.push_back(std::move(coord));
 	//}
 
 	// channel control
@@ -197,7 +199,7 @@ void Material::Load(std::istream& file)
 
 		file.read(ts.data, sizeof(ts.data));
 
-		tev_stages.push_back(ts);
+		tev_stages.push_back(std::move(ts));
 	}
 	if (!flags.tev_stage)
 	{
@@ -219,7 +221,7 @@ void Material::Load(std::istream& file)
 
 		tev.tex_map = 0;
 
-		tev_stages.push_back(tev);
+		tev_stages.push_back(std::move(tev));
 
 		// 2nd stage
 		tev.color_in.a = 0xf;

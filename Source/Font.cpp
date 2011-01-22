@@ -22,10 +22,7 @@ distribution.
 */
 
 #include "Font.h"
-
-// TODO: remove these
-#include <iostream>
-#include "Pane.h"
+#include "Endian.h"
 
 namespace WiiBanner
 {
@@ -154,12 +151,10 @@ void Font::Load(std::istream& file)
 			// TODO: is it ok to assume texture data starts right here?
 			file.seekg(sheet_image, std::ios::beg);
 
-			char* const tex_data = new char[tex_size];
-			file.read(tex_data, tex_size);
+			img_ptr = new char[tex_size];
+			file.read(img_ptr, tex_size);
 
-			GX_InitTexObj(&texobj, tex_data, sheet_width, sheet_height, sheet_format & 0x7fff, 0, 0, 0);
-
-			delete[] tex_data;
+			GX_InitTexObj(&texobj, img_ptr, sheet_width, sheet_height, sheet_format & 0x7fff, 0, 0, 0);
 		}
 		else if (magic == BINARY_MAGIC_CHARACTER_CODE_MAP)	// char code map
 		{
@@ -168,7 +163,7 @@ void Font::Load(std::istream& file)
 			file.seekg(2, std::ios::cur);
 			file >> BE >> cmap.pNext;
 
-			code_maps.push_back(cmap);
+			code_maps.push_back(std::move(cmap));
 		}
 		else if (magic == BINARY_MAGIC_CHARACTER_WIDTH)	// character width
 		{

@@ -38,7 +38,7 @@ public:
 
 	Layout* GetBanner() const { return layout_banner; }
 	Layout* GetIcon() const { return layout_icon; }
-	BannerStream* GetSound() const { return sound; }
+	Sound* GetSound() const { return sound; }
 
 	void LoadBanner();
 	void LoadIcon();
@@ -54,7 +54,7 @@ private:
 	std::streamoff offset_banner, offset_icon, offset_sound, header_bytes;
 
 	Layout *layout_banner, *layout_icon;
-	BannerStream* sound;
+	Sound* sound;
 
 	const std::string filename;
 };

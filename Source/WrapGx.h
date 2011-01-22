@@ -24,7 +24,7 @@ distribution.
 #ifndef WII_BNR_WRAP_GX_
 #define WII_BNR_WRAP_GX_
 
-#include "CommonTypes.h"
+#include "Types.h"
 
 #define 	GX_MAX_TEVREG   4
 #define 	GX_TEVPREV   0

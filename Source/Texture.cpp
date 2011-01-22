@@ -25,6 +25,7 @@ distribution.
 #include <set>
 
 #include "Texture.h"
+#include "Endian.h"
 
 namespace WiiBanner
 {

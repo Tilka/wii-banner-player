@@ -24,13 +24,10 @@ distribution.
 #ifndef WII_BNR_FONT_H_
 #define WII_BNR_FONT_H_
 
-#include "Types.h"
-
-#include "WrapGx.h"
-
-#include <string>
 #include <list>
 #include <vector>
+
+#include "Pane.h"
 
 namespace WiiBanner
 {
@@ -38,6 +35,9 @@ namespace WiiBanner
 class Font : public Named
 {
 public:
+	Font() : img_ptr(nullptr) {}
+	~Font() { delete[] img_ptr; }
+
 	void Load(std::istream& file);
 
 	void Apply() const;
@@ -55,6 +55,8 @@ private:
 	std::list<CodeMap> code_maps;
 
 	GXTexObj texobj;
+
+	char* img_ptr;
 };
 
 class FontList : public std::vector<Font*>

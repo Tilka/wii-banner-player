@@ -21,14 +21,15 @@ misrepresented as being the original software.
 distribution.
 */
 
+#include <stack>
+
+#include <gl/glew.h>
+
 #include "Layout.h"
 #include "Picture.h"
 #include "Textbox.h"
 #include "Window.h"
-
-#include <stack>
-
-#include <gl/glew.h>
+#include "Endian.h"
 
 namespace WiiBanner
 {
@@ -235,7 +236,7 @@ Layout::~Layout()
 		delete font;
 }
 
-void Layout::Render(float aspect_ratio) const
+void Layout::Render(float aspect_ratio, float zoom) const
 {
 	glLoadIdentity();
 
@@ -247,6 +248,8 @@ void Layout::Render(float aspect_ratio) const
 	glOrtho(0.f, width * adjust.x, 0.f, height * adjust.y, -1000.f, 1000.f);
 	// assuming always centered, hope this isn't an issue
 	glTranslatef(width / 2 * adjust.x, height / 2 * adjust.y, 0.f);
+
+	glScalef(zoom, zoom, 1.f);
 
 	foreach (Pane* pane, panes)
 		pane->Render(resources, 0xff, adjust);

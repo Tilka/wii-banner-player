@@ -21,16 +21,21 @@ misrepresented as being the original software.
 distribution.
 */
 
-#include "Banner.h"
-
-#include "FileHandlerARC.h"
-
 #include <fstream>
 
+#include <gl/glew.h>
+
+// hax
+#define WIN32_LEAN_AND_MEAN
+#define _WINUSER_
+// from dolphin
+#include "FileHandlerARC.h"
+
+#include "Banner.h"
 #include "LZ77.h"
 #include "Sound.h"
-
-#include <gl/glew.h>
+#include "Endian.h"
+#include "Types.h"
 
 namespace WiiBanner
 {
@@ -183,7 +188,7 @@ void Banner::LoadSound()
 		std::ifstream bnr_file(filename, std::ios::binary | std::ios::in);
 
 		bnr_file.seekg(header_bytes + offset_sound, std::ios::beg);
-		auto* const s = new BannerStream;
+		auto* const s = new Sound;
 		if (s->Load(bnr_file))
 			sound = s;
 		else
@@ -284,9 +289,9 @@ Layout* Banner::LoadLayout(const std::string& lyt_name, std::streamoff offset, V
 
 Banner::~Banner()
 {
-	delete layout_banner;
-	delete layout_icon;
-	delete sound;
+	UnloadBanner();
+	UnloadIcon();
+	UnloadSound();
 }
 
 }

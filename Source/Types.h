@@ -24,29 +24,22 @@ distribution.
 #ifndef WII_BNR_TYPES_H_
 #define WII_BNR_TYPES_H_
 
-#define NOMINMAX
-#include <Windows.h>
-
 #include <stdint.h>
 #include <string>
 #include <iostream>
-
 #include <algorithm>
 #include <type_traits>
+#include <cstdint>
 
-#include "CommonTypes.h"
-#include "CommonFuncs.h"
+typedef int8_t s8;
+typedef int16_t s16;
+typedef int32_t s32;
+typedef int64_t s64;
 
-// TODO: remove
-#include "Endian.h"
-
-#ifdef _WIN32
-// some silly vc++ crap
-#define foreach(e, c) for each (e in c)
-#else
-// c++0x range-based for loop
-#define foreach(e, c) for (e : c)
-#endif
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
 
 template <typename T>
 struct Vec2
@@ -105,91 +98,14 @@ private:
 
 #define MAKE_FOURCC(a, b, c, d) ((a) * (1 << 24) + (b) * (1 << 16) + (c) * (1 << 8) + (d) * (1 << 0))
 
-inline std::istream& operator>>(std::istream& lhs, FourCC& rhs)
-{
-	lhs >> BE >> rhs.data;
-	return lhs;
-}
-
-inline std::ostream& operator<<(std::ostream& lhs, const FourCC& rhs)
-{
-	const u32 data = Common::swap32(rhs.data);
-	lhs.write(reinterpret_cast<const char*>(&data), 4);
-	return lhs;
-}
-
-template <typename T>
-inline T Clamp(T value, T min, T max)
-{
-	return (value < min) ? min : (value < max) ? value : max;
-}
-
-template <typename T, typename B>
-inline T RoundUp(T value, B base)
-{
-	return static_cast<T>((value + (base - 1)) & ~(base - 1));
-}
-
-template <typename T, typename B>
-inline T RoundDown(T value, B base)
-{
-	return static_cast<T>(value & ~(base - 1));
-}
-
-template <typename C, typename F>
-void ReadSections(std::istream& file, C count, F func)
-{	
-	while (count--)
-	{
-		const std::streamoff start = file.tellg();
-
-		FourCC magic;
-		u32 size = 0;
-		file >> magic >> BE >> size;
-
-		func(magic, start);
-
-		file.seekg(start + size, std::ios::beg);
-	}
-}
-
 class Named
 {
 public:
-	//std::string& GetName() { return name; }	// how silly is this?
 	const std::string& GetName() const { return name; }
 	void SetName(const std::string& _name) { name = _name; }
 
 private:
 	std::string name;
 };
-
-inline std::string ReadNullTerminatedString(std::istream& file)
-{
-	std::string str;
-	std::getline(file, str, '\0');
-	return str;
-}
-
-template <int L>
-std::string ReadFixedLengthString(std::istream& file)
-{
-	char str[L + 1] = {};
-	file.read(str, L);
-	return str;
-}
-
-inline void WriteNullTerminatedString(std::ostream& file, const std::string& str)
-{
-	file << str << '\0';
-}
-
-template <int L>
-inline void WriteFixedLengthString(std::ostream& file, const std::string& str)
-{
-	char str[L] = {};
-	std::copy(str.begin(), (str.length() > L) ? str.begin() + L : str.end(), str);
-	file.write(str, L);
-}
 
 #endif

@@ -22,8 +22,8 @@ distribution.
 */
 
 #include "Animator.h"
-
-#include "Pane.h"	// for ReadOffsetList
+#include "Endian.h"
+#include "Funcs.h"
 
 namespace WiiBanner
 {
