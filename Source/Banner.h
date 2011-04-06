@@ -41,7 +41,14 @@ public:
 	Sound* GetSound() const { return sound; }
 
 	void LoadBanner();
-	void LoadIcon();
+	
+	// definition here because <Windows.h> is declaring a macro "LoadIcon" and messing with crap :/
+	void LoadIcon()
+	{
+		if (offset_icon && !layout_icon)
+			layout_icon = LoadLayout("Icon", offset_icon, Vec2f(128.f, 96.f));
+	}
+
 	void LoadSound();
 
 	void UnloadBanner() { delete layout_banner; layout_banner = nullptr; }

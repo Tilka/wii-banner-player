@@ -24,161 +24,95 @@ distribution.
 #ifndef WII_BNR_QUEUE_THREAD_H_
 #define WII_BNR_QUEUE_THREAD_H_
 
-#include <queue>
+#include <map>
+#include <functional>
+
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
 // from dolphin
 #include "FifoQueue.h"
-#include "Thread.h"
-
-template <typename F>
-THREAD_RETURN CallAndDelete(void* param)
-{
-	static_cast<F*>(param)->func();
-	delete param;
-
-	return 0;
-}
-
-template <typename F>
-void AsyncCall(F func)
-{
-	struct Func
-	{
-		Func(F _func) : func(_func) {}
-		const F func;
-	};
-
-	Common::Thread thread(&CallAndDelete<Func>, new Func(func));
-}
-
-typedef int PriorityType;
-
-class QueueThreadJobBase
-{
-public:
-	QueueThreadJobBase(PriorityType _priority)
-		: priority(_priority) {}
-
-	virtual void Execute() = 0;
-
-	const PriorityType priority;
-};
-
-template <typename F>
-class QueueThreadJob : public QueueThreadJobBase
-{
-public:
-	QueueThreadJob(F func, PriorityType priority)
-		: QueueThreadJobBase(priority), m_func(func) {}
-
-	void Execute() { m_func(); };
-
-private:
-	F const m_func;
-};
-
-template <typename F, typename A>
-class QueueThreadJobArg : public QueueThreadJobBase
-{
-public:
-	QueueThreadJobArg(F func, const A arg, PriorityType priority)
-		: QueueThreadJobBase(priority), m_func(func), m_arg(arg) {}
-
-	void Execute() { m_func(m_arg); };
-
-private:
-	A m_arg;
-	F const m_func;
-};
-
-template <typename Q>
-THREAD_RETURN QueueThreadFunc(void* param)
-{
-	auto& queue_lock = *static_cast<Q*>(param);
-
-	while (queue_lock.do_run)
-	{
-		queue_lock.lock.Enter();
-
-		if (queue_lock.queue.empty())
-		{
-			queue_lock.lock.Leave();
-			Common::SleepCurrentThread(1);
-		}
-		else
-		{
-			auto* const job = queue_lock.queue.top();
-			queue_lock.queue.pop();
-			queue_lock.lock.Leave();
-
-			job->Execute();
-			delete job;
-		}
-	}
-
-	return 0;
-}
-
-class CompareJobPtr
-{
-public:	
-	bool operator()(const QueueThreadJobBase* lhs, const QueueThreadJobBase* rhs)
-	{
-		return lhs->priority < rhs->priority;
-	}
-};
 
 // better name?
 class QueueThread
 {
 public:
-	QueueThread() : queue_lock(), thread(&QueueThreadFunc<QueueLock>, &queue_lock) {}
+	typedef int priority_type;
+	typedef std::function<void()> job_type;
+
+	QueueThread()
+	{
+		m_thread = std::thread(std::mem_fun(&QueueThread::ThreadFunc), this);
+	}
 
 	~QueueThread()
 	{
-		queue_lock.do_run = false;
-		thread.WaitForDeath();
+		// push an invalid job to tell the thread to die
+		PushJob(std::numeric_limits<priority_type>::max(), job_type());
+
+		m_thread.join();
 	}
 
 	void Clear()
 	{
-		queue_lock.lock.Enter();
-		while (!queue_lock.queue.empty())
-		{
-			delete queue_lock.queue.top();
-			queue_lock.queue.pop();
-		}
-		queue_lock.lock.Leave();
+		std::lock_guard<std::mutex> lk(m_lock);
+		m_jobs.clear();
 	}
 
 	template <typename F>
-	void Push(PriorityType priority, F func)
+	void Push(priority_type priority, F&& func)
 	{
-		queue_lock.lock.Enter();
-		queue_lock.queue.push(new QueueThreadJob<F>(func, priority));
-		queue_lock.lock.Leave();
+		PushJob(priority, job_type(std::forward<F>(func)));
 	}
 
 	template <typename F, typename A>
-	void Push(PriorityType priority, F func, A arg)
+	void Push(priority_type priority, F&& func, A&& arg)
 	{
-		queue_lock.lock.Enter();
-		queue_lock.queue.push(new QueueThreadJobArg<F, A>(func, arg, priority));
-		queue_lock.lock.Leave();
+		// stupid msvc can't bind a lambda properly
+		std::function<void(A&&)> job(std::forward<F>(func));
+
+		PushJob(priority, std::bind<void>(std::move(job), std::forward<A>(arg)));
 	}
 
-	struct QueueLock
+	void ThreadFunc()
 	{
-		QueueLock() : do_run(true) {}
+		while (true)
+		{
+			std::unique_lock<std::mutex> lk(m_lock);
+			m_condition.wait(lk, [this]()->bool{ return !m_jobs.empty(); });
 
-		std::priority_queue<QueueThreadJobBase*, std::vector<QueueThreadJobBase*>, CompareJobPtr> queue;
-		Common::CriticalSection lock;
-		volatile bool do_run;
+			auto const jobit = m_jobs.begin();
+			if (jobit != m_jobs.end())
+			{
+				job_type func = std::move(jobit->second);
+				m_jobs.erase(jobit);
 
-	} queue_lock;
+				lk.unlock();
+
+				if (!func)
+					break;	// done doing jobs, end thread
+
+				func();
+			}
+		}
+	}
 
 private:
-	Common::Thread thread;
+	void PushJob(priority_type priority, job_type&& job)
+	{
+		{
+		std::lock_guard<std::mutex> lk(m_lock);
+		m_jobs.insert(std::make_pair(priority, std::move(job)));
+		}
+
+		m_condition.notify_one();
+	}
+
+	std::multimap<priority_type, job_type, std::greater<priority_type>> m_jobs;
+	std::mutex m_lock;
+	std::condition_variable m_condition;
+	std::thread m_thread;
 };
 
 //THREAD_RETURN ThreadPoolThreadFunc(void* param)

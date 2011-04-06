@@ -175,11 +175,13 @@ void Banner::LoadBanner()
 		layout_banner = LoadLayout("Banner", offset_banner, Vec2f(608.f, 456.f));
 }
 
+/*
 void Banner::LoadIcon()
 {
 	if (offset_icon && !layout_icon)
 		layout_icon = LoadLayout("Icon", offset_icon, Vec2f(128.f, 96.f));
 }
+*/
 
 void Banner::LoadSound()
 {

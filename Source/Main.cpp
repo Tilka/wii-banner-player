@@ -31,16 +31,17 @@ distribution.
 #include <string>
 
 // hax
-#define WIN32_LEAN_AND_MEAN
-#define _WINUSER_
+//#define WIN32_LEAN_AND_MEAN
+//#define _WINUSER_
+
+#include "QueueThread.h"
+
+#include "Banner.h"
+#include "Types.h"
 
 #include <gl/glew.h>
 
 #include <SFML/Window.hpp>
-
-#include "Banner.h"
-#include "QueueThread.h"
-#include "Types.h"
 
 #define NO_CONSOLE 0
 
@@ -163,14 +164,14 @@ void ForEachFile(const std::string& search, F func)
 }
 
 static std::vector<Tile*> g_tiles;
-static Common::CriticalSection g_tiles_lock;
+static std::mutex g_tiles_lock;
 static int g_tile_columns;
 
 void AddTile(Tile* tile)
 {
 	// TODO: make not so ugly
 
-	g_tiles_lock.Enter();
+	std::lock_guard<std::mutex> lk(g_tiles_lock);
 
 	Vec2f v(0.f, 0.f);
 	if (!g_tiles.empty())
@@ -185,8 +186,6 @@ void AddTile(Tile* tile)
 
 	g_tiles.push_back(tile);
 	tile->position  = v;
-
-	g_tiles_lock.Leave();
 }
 
 //class CritSecLocker
@@ -202,7 +201,7 @@ Tile* FindTile(const Vec2f& pos)
 {
 	Tile* ret = nullptr;
 
-	g_tiles_lock.Enter();
+	std::lock_guard<std::mutex> lk(g_tiles_lock);
 
 	foreach (Tile* tile, g_tiles)
 	{
@@ -212,8 +211,6 @@ Tile* FindTile(const Vec2f& pos)
 			break;
 		}
 	}
-
-	g_tiles_lock.Leave();
 
 	return ret;
 }
@@ -244,7 +241,7 @@ void LoadTile(const std::string& fname)
 			AddTile(tile);
 
 			// this sleep just makes it look cool :p
-			Common::SleepCurrentThread(50);
+			std::this_thread::sleep_for(std::chrono::milliseconds(50));
 		}
 		else
 			delete bnr;
@@ -363,9 +360,10 @@ int main(int argc, char* argv[])
 		{
 			auto* const bnr = full_banner;
 
-			g_tiles_lock.Enter();
+			{
+			std::lock_guard<std::mutex> lk(g_tiles_lock);
 			full_banner = nullptr;
-			g_tiles_lock.Leave();
+			}
 
 			bnr->UnloadSound();
 			bnr->UnloadBanner();
@@ -409,39 +407,35 @@ int main(int argc, char* argv[])
 				{
 					const Vec2f dest(mouse_position.x / g_tile_size.x, mouse_position.y / g_tile_size.y);
 
-					g_tiles_lock.Enter();
+					std::lock_guard<std::mutex> lk(g_tiles_lock);
 
 					Tile* const tile_dest = FindTile(Vec2f(dest.x, dest.y));
 					if (tile_dest)
 					{
 						if (mouse_click)
 						{
-							g_worker.Push(PRIORITY_BANNER, [&](Tile* tile)
+							g_worker.Push(PRIORITY_BANNER, [&, tile_selected]
 							{
-								if (full_banner != tile->banner)
+								if (full_banner != tile_selected->banner)
 								{
-									tile->banner->LoadBanner();
-									tile->banner->GetBanner()->SetLanguage("ENG");
+									tile_selected->banner->LoadBanner();
+									tile_selected->banner->GetBanner()->SetLanguage("ENG");
 
-									tile->banner->LoadSound();
+									tile_selected->banner->LoadSound();
 
 									disable_full_banner();
 
-									g_tiles_lock.Enter();
-									full_banner = tile->banner;
+									std::lock_guard<std::mutex> lk(g_tiles_lock);
+									full_banner = tile_selected->banner;
 									full_banner->GetSound()->Play();
-									g_tiles_lock.Leave();
 								}
-
-							}, tile_selected);
+							});
 						}
 						else
 							std::swap(tile_dest->position, tile_selected->position);
 					}
 					else
 						tile_selected->position = dest;
-							
-					g_tiles_lock.Leave();
 
 					tile_selected = nullptr;
 				}
@@ -483,7 +477,7 @@ int main(int argc, char* argv[])
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glClearColor(0, 0, 0, 1.f);
 
-		g_tiles_lock.Enter();
+		std::unique_lock<std::mutex> lk(g_tiles_lock);
 		
 		if (full_banner)
 		{
@@ -533,7 +527,7 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		g_tiles_lock.Leave();
+		lk.unlock();
 
 		window.Display();
 
@@ -558,6 +552,8 @@ int main(int argc, char* argv[])
 
 		sf::Sleep(sleep_time);
 	}
+
+	g_worker.Clear();
 
 	// cleanup
 	foreach (Tile* tile, g_tiles)
