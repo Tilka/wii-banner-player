@@ -30,7 +30,78 @@
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
+			<Add directory="Externals/dolphin-emu/Source" />
 		</Compiler>
+		<Linker>
+			<Add library="sfml-window" />
+			<Add library="sfml-graphics" />
+			<Add library="sfml-audio" />
+		</Linker>
+		<Unit filename="Externals/dolphin-emu/Source/Blob.cpp" />
+		<Unit filename="Externals/dolphin-emu/Source/Blob.h" />
+		<Unit filename="Externals/dolphin-emu/Source/CDUtils.cpp" />
+		<Unit filename="Externals/dolphin-emu/Source/CDUtils.h" />
+		<Unit filename="Externals/dolphin-emu/Source/Common.h" />
+		<Unit filename="Externals/dolphin-emu/Source/CommonFuncs.h" />
+		<Unit filename="Externals/dolphin-emu/Source/CommonTypes.h" />
+		<Unit filename="Externals/dolphin-emu/Source/CompressedBlob.cpp">
+			<Option compile="0" />
+			<Option link="0" />
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="Externals/dolphin-emu/Source/CompressedBlob.h" />
+		<Unit filename="Externals/dolphin-emu/Source/FifoQueue.h" />
+		<Unit filename="Externals/dolphin-emu/Source/FileBlob.cpp" />
+		<Unit filename="Externals/dolphin-emu/Source/FileBlob.h" />
+		<Unit filename="Externals/dolphin-emu/Source/FileHandlerARC.cpp" />
+		<Unit filename="Externals/dolphin-emu/Source/FileHandlerARC.h" />
+		<Unit filename="Externals/dolphin-emu/Source/FileUtil.cpp">
+			<Option compile="0" />
+			<Option link="0" />
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="Externals/dolphin-emu/Source/FileUtil.h" />
+		<Unit filename="Externals/dolphin-emu/Source/Filesystem.cpp">
+			<Option compile="0" />
+			<Option link="0" />
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="Externals/dolphin-emu/Source/Filesystem.h" />
+		<Unit filename="Externals/dolphin-emu/Source/LookUpTables.h" />
+		<Unit filename="Externals/dolphin-emu/Source/TextureDecoder.cpp" />
+		<Unit filename="Externals/dolphin-emu/Source/TextureDecoder.h" />
+		<Unit filename="Externals/dolphin-emu/Source/Volume.h" />
+		<Unit filename="Source/Animator.cpp" />
+		<Unit filename="Source/Animator.h" />
+		<Unit filename="Source/Banner.cpp" />
+		<Unit filename="Source/Banner.h" />
+		<Unit filename="Source/Endian.cpp" />
+		<Unit filename="Source/Endian.h" />
+		<Unit filename="Source/Font.cpp" />
+		<Unit filename="Source/Font.h" />
+		<Unit filename="Source/Funcs.h" />
+		<Unit filename="Source/LZ77.h" />
+		<Unit filename="Source/Layout.cpp" />
+		<Unit filename="Source/Layout.h" />
+		<Unit filename="Source/Main.cpp" />
+		<Unit filename="Source/Material.cpp" />
+		<Unit filename="Source/Material.h" />
+		<Unit filename="Source/Pane.cpp" />
+		<Unit filename="Source/Pane.h" />
+		<Unit filename="Source/Picture.cpp" />
+		<Unit filename="Source/Picture.h" />
+		<Unit filename="Source/QueueThread.h" />
+		<Unit filename="Source/Sound.cpp" />
+		<Unit filename="Source/Sound.h" />
+		<Unit filename="Source/Textbox.cpp" />
+		<Unit filename="Source/Textbox.h" />
+		<Unit filename="Source/Texture.cpp" />
+		<Unit filename="Source/Texture.h" />
+		<Unit filename="Source/Types.h" />
+		<Unit filename="Source/Window.cpp" />
+		<Unit filename="Source/Window.h" />
+		<Unit filename="Source/WrapGx.cpp" />
+		<Unit filename="Source/WrapGx.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />
