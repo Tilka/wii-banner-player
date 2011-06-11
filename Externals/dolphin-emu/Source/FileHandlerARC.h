@@ -62,7 +62,7 @@ class CARCFile
 
 		size_t BuildFilenames(const size_t _FirstIndex, const size_t _LastIndex,
 			const char* directory, const char* _szNameTable);
-		size_t CARCFile::BuildFilenames(const size_t first_index, const size_t last_index,
+		size_t BuildFilenames(const size_t first_index, const size_t last_index,
 			std::istream& file, const char* directory = "");
 
 		const SFileInfo* FindFileInfo(std::string _rFullPath) const;

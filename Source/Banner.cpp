@@ -23,7 +23,7 @@ distribution.
 
 #include <fstream>
 
-#include <gl/glew.h>
+#include <GL/glew.h>
 
 // hax
 #define WIN32_LEAN_AND_MEAN
@@ -40,7 +40,7 @@ distribution.
 namespace WiiBanner
 {
 
-static enum BinaryMagic : u32
+enum BinaryMagic : u32
 {
 	BINARY_MAGIC_U8_ARCHIVE = MAKE_FOURCC('U', 0xAA, '8', '-'),
 

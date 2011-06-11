@@ -23,7 +23,7 @@ distribution.
 
 #include <stack>
 
-#include <gl/glew.h>
+#include <GL/glew.h>
 
 #include "Layout.h"
 #include "Picture.h"
@@ -34,7 +34,7 @@ distribution.
 namespace WiiBanner
 {
 
-static enum BinaryMagic : u32
+enum BinaryMagic : u32
 {
 	BINARY_MAGIC_LAYOUT = 'RLYT',
 

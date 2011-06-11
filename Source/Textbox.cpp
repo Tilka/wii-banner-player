@@ -21,7 +21,8 @@ misrepresented as being the original software.
 distribution.
 */
 
-#include <gl/glew.h>
+#include <GL/glew.h>
+#include <cstring>
 
 #include "Textbox.h"
 #include "Layout.h"
@@ -48,7 +49,7 @@ void Textbox::Load(std::istream& file)
 	ReadBEArray(file, &colors->r, sizeof(colors));
 
 	file >> BE >> width >> height >> space_char >> space_line;
-	
+
 	// read utf-16 string
 	while (true)
 	{

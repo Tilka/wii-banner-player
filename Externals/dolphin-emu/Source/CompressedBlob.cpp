@@ -107,7 +107,7 @@ void CompressedBlobReader::GetBlock(u64 block_num, u8 *out_ptr)
 
 	// clear unused part of zlib buffer. maybe this can be deleted when it works fully.
 	memset(zlib_buffer + comp_block_size, 0, zlib_buffer_size - comp_block_size);
-	
+
 	fseeko(file, offset, SEEK_SET);
 	fread(zlib_buffer, 1, comp_block_size, file);
 

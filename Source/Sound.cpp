@@ -22,6 +22,7 @@ distribution.
 */
 
 #include <iostream>
+#include <cstring>
 
 #include <SFML/Audio.hpp>
 
@@ -36,7 +37,7 @@ distribution.
 namespace WiiBanner
 {
 
-static enum BinaryMagic : u32
+enum BinaryMagic : u32
 {
 	BINARY_MAGIC_WAV = 'RIFF',
 	BINARY_MAGIC_AIFF = 'FORM',
@@ -116,7 +117,7 @@ struct BNS
 			>> info.unk2 >> info.loop_start >> info.sample_count;
 
 		in.seekg(6 * sizeof(u32), in.cur);
-		
+
 		if (info.channel_count == 1)
 		{
 			ReadBEArray(in, info.coefs[0], 16);
@@ -236,6 +237,11 @@ private:
 	virtual bool OnStart();
 	virtual bool OnGetData(sf::SoundStream::Chunk& Data);
 
+	virtual void OnSeek(sf::Uint32)
+	{
+		// TODO:
+	}
+
 	std::vector<sf::Int16> samples;
 	std::size_t position;
 	std::size_t loop_position;	// -1 means don't loop
@@ -256,7 +262,7 @@ bool BannerStream::Load(std::istream& file)
 	BNS bns_file;
 	FourCC magic;
 	u32 file_len;
-	
+
 	LZ77Decompressor decomp(file);
 	std::istream& in = decomp.GetStream();
 
@@ -311,7 +317,7 @@ bool BannerStream::Load(std::istream& file)
 		const sf::Int16* data = SoundData.GetSamples();
 		samples.assign(data, data + SoundData.GetSamplesCount());
 	}
-	
+
 	return ret;
 }
 
@@ -329,7 +335,7 @@ bool BannerStream::OnGetData(sf::SoundStream::Chunk& chunk)
 		// Returning false means that we want to stop playing the stream
 		return false;
 	}
-	
+
 	if (position + buffer_size >= samples.size())
 	{
 		// Play the last buffer

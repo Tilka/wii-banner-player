@@ -102,7 +102,7 @@ inline LEStream operator>>(std::istream& lhs, const LEStreamManip&)
 template <typename T>
 void ReadBEArray(std::istream& file, T* data, unsigned int size)
 {
-	auto& bestrm = file >> BE;
+	auto bestrm = file >> BE;
 
 	for (unsigned int i = 0; i != size; ++i)
 		bestrm >> data[i];
@@ -111,7 +111,7 @@ void ReadBEArray(std::istream& file, T* data, unsigned int size)
 template <typename T>
 void ReadLEArray(std::istream& file, T* data, unsigned int size)
 {
-	auto& lestrm = file >> LE;
+	auto lestrm = file >> LE;
 
 	for (unsigned int i = 0; i != size; ++i)
 		lestrm >> data[i];

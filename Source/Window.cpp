@@ -21,7 +21,7 @@ misrepresented as being the original software.
 distribution.
 */
 
-#include <gl/glew.h>
+#include <GL/glew.h>
 
 #include "Window.h"
 #include "Endian.h"

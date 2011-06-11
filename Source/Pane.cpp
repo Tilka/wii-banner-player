@@ -21,7 +21,7 @@ misrepresented as being the original software.
 distribution.
 */
 
-#include <gl/glew.h>
+#include <GL/glew.h>
 
 #include "Pane.h"
 #include "Layout.h"
@@ -167,7 +167,7 @@ void Pane::ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data)
 		SetVisible(!!data.data2);
 		return;
 	}
-	
+
 	Base::ProcessStepKey(type, data);
 }
 
@@ -244,7 +244,7 @@ void Quad::ProcessHermiteKey(const KeyType& type, float value)
 			return;
 		}
 	}
-	
+
 	Base::ProcessHermiteKey(type, value);
 }
 

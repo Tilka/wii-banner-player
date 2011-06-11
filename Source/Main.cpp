@@ -39,7 +39,7 @@ distribution.
 #include "Banner.h"
 #include "Types.h"
 
-#include <gl/glew.h>
+#include <GL/glew.h>
 
 #include <SFML/Window.hpp>
 
@@ -241,7 +241,7 @@ void LoadTile(const std::string& fname)
 			AddTile(tile);
 
 			// this sleep just makes it look cool :p
-			std::this_thread::sleep_for(std::chrono::milliseconds(50));
+			//std::this_thread::sleep_for(std::chrono::milliseconds(50));
 		}
 		else
 			delete bnr;
@@ -266,6 +266,14 @@ int main(int argc, char* argv[])
 	g_tile_columns = 6;
 	g_tile_size = Vec2i(170, 96);
 #endif
+
+	if (argc > 1)
+	{
+		std::vector<const char*> args(argv + 1, argv + argc);
+
+		for (const char* fname : args)
+			LoadTile(fname);
+	}
 
 	auto const load_tiles = []
 	{
@@ -375,7 +383,7 @@ int main(int argc, char* argv[])
 	while (window.IsOpened())
 	{
 		sf::Event ev;
-		while (window.GetEvent(ev))
+		while (window.PollEvent(ev))
 		{
 			switch (ev.Type)
 			{
@@ -478,11 +486,11 @@ int main(int argc, char* argv[])
 		glClearColor(0, 0, 0, 1.f);
 
 		std::unique_lock<std::mutex> lk(g_tiles_lock);
-		
+
 		if (full_banner)
 		{
 			const float window_aspect = (float)window.GetWidth() / (float)window.GetHeight();
-					
+
 			render_aspect = Clamp(window_aspect, min_aspect, max_aspect);
 
 			if (render_aspect > window_aspect)
@@ -541,7 +549,7 @@ int main(int argc, char* argv[])
 		if (10 == frame_count)
 		{
 			sleep_time = (1.f / desired_fps) - (clock.GetElapsedTime() / frame_count - sleep_time);
-			
+
 			//std::cout << "sleep_time: " << (1.f / sleep_time) << '\n';
 
 			frame_count = 0;
@@ -550,10 +558,12 @@ int main(int argc, char* argv[])
 		else
 			++frame_count;
 
-		sf::Sleep(sleep_time);
+		// TODO: fix
+		sf::Sleep(1000 / 60);
 	}
 
-	g_worker.Clear();
+	// TODO: this
+	//g_worker.Clear();
 
 	// cleanup
 	foreach (Tile* tile, g_tiles)

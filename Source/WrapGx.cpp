@@ -21,9 +21,9 @@ misrepresented as being the original software.
 distribution.
 */
 
-#include <gl/glew.h>
-#include <gl/glu.h>
-#include <gl/gl.h>
+#include <GL/glew.h>
+#include <GL/glu.h>
+#include <GL/gl.h>
 
 #include <iostream>
 #include <map>
@@ -124,7 +124,7 @@ struct GLTexObj
 			const auto& tlut = g_tlut_names[tlut_name];
 			if (tlut.lut)
 				memcpy(texMem, tlut.lut, tlut.entries * 2);
-			
+
 			// decode texture
 			auto const pcfmt = TexDecoder_Decode(g_texture_decode_buffer,
 				reinterpret_cast<u8*>(img_ptr), expanded_width, expanded_height, fmt, 0, tlut.fmt);
@@ -226,7 +226,7 @@ void 	GX_LoadTlut (GXTlutObj *obj, u32 tlut_name)
 }
 
 void 	GX_InitTexObj (GXTexObj *obj, void *img_ptr, u16 wd, u16 ht, u8 fmt, u8 wrap_s, u8 wrap_t, u8 mipmap)
-{	
+{
 	GLTexObj& txobj = *reinterpret_cast<GLTexObj*>(obj);
 
 	txobj.img_ptr = img_ptr;
@@ -434,7 +434,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 
 	vert_ss << "gl_FrontColor = gl_Color;";
 	vert_ss << "gl_BackColor = gl_Color;";
-	
+
 	for (unsigned int i = 0; i != sampler_count; ++i)
 		vert_ss << "gl_TexCoord[" << i << "] = gl_TextureMatrix[" << i << "] * gl_MultiTexCoord" << i << ";";
 
@@ -444,7 +444,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 
 	// create/compile vertex shader
 	vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-	
+
 	{
 	const auto& vert_src_str = vert_ss.str();
 	const GLchar* vert_src = vert_src_str.c_str();
@@ -578,7 +578,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 			case 14: // COMP_RGB8_GT
 			case 15: // COMP_RGB8_EQ
 			//	break;
-			
+
 			default:
 				frag_ss << "(vec4(0.0))" << swiz;
 				std::cout << "Unsupported tevop!! " << (int)tevop << '\n';
@@ -614,7 +614,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 
 	// create/compile fragment shader
 	fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-	
+
 	{
 	const auto& frag_src_str = frag_ss.str();
 	const GLchar* frag_src = frag_src_str.c_str();
@@ -645,7 +645,7 @@ void CompiledTevStages::Compile(const TevStages& stages)
 	program = glCreateProgram();
 	glAttachShader(program, vertex_shader);
 	glAttachShader(program, fragment_shader);
-	
+
 	// link program, check link status
 	glLinkProgram(program);
 	GLint link_status;

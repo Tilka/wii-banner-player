@@ -25,6 +25,7 @@ distribution.
 #define WII_BNR_ANIMATOR_H_
 
 #include <map>
+#include <cstring>
 
 #include "Types.h"
 

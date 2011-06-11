@@ -29,7 +29,7 @@ distribution.
 #include "Endian.h"
 #include "Types.h"
 
-static enum : u32
+enum : u32
 {
 	BINARY_MAGIC_LZ77 = 'LZ77'
 };

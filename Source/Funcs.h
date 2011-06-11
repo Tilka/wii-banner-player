@@ -33,6 +33,8 @@ distribution.
 #define foreach(e, c) for (e : c)
 #endif
 
+#include "Endian.h"
+
 template <typename C, typename F>
 inline void ForEach(C& container, F func)
 {
@@ -59,7 +61,7 @@ inline T RoundDown(T value, B base)
 
 template <typename C, typename F>
 void ReadSections(std::istream& file, C count, F func)
-{	
+{
 	while (count--)
 	{
 		const std::streamoff start = file.tellg();
@@ -117,10 +119,10 @@ inline void WriteNullTerminatedString(std::ostream& file, const std::string& str
 }
 
 template <int L>
-inline void WriteFixedLengthString(std::ostream& file, const std::string& str)
+inline void WriteFixedLengthString(std::ostream& file, const std::string& _str)
 {
 	char str[L] = {};
-	std::copy(str.begin(), (str.length() > L) ? str.begin() + L : str.end(), str);
+	std::copy(_str.begin(), (_str.length() > L) ? _str.begin() + L : _str.end(), str);
 	file.write(str, L);
 }
 

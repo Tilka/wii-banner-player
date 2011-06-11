@@ -34,7 +34,7 @@ struct CharWidths
 	s8 char_width;               // character width  = left space width  + glyph width  + right space width
 };
 
-static enum BinaryMagic : u32
+enum BinaryMagic : u32
 {
 	BINARY_MAGIC_FONT = 'RFNA',
 
@@ -75,7 +75,7 @@ void Font::Load(std::istream& file)
 		{
 			u32 sheet_size;
 			u16 glyphs_per_sheet;
-			
+
 			u16 set_count, sheet_count, cwdh_count, cmap_count;
 
 			file >> BE >> sheet_size >> glyphs_per_sheet
@@ -135,7 +135,7 @@ void Font::Load(std::istream& file)
 			file >> BE >> cell_width >> cell_height >> baseline_pos >> max_char_width
 				>> sheet_size >> sheet_count >> sheet_format >> sheet_row
 				>> sheet_row >> sheet_line >> sheet_width >> sheet_height;
-			
+
 			file >> LE >> sheet_image;
 
 			//std::cout << "tglp\n";

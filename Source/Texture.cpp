@@ -30,7 +30,7 @@ distribution.
 namespace WiiBanner
 {
 
-static enum BinaryMagic : u32
+enum BinaryMagic : u32
 {
 	BINARY_MAGIC_TEXTURE = MAKE_FOURCC(0x00, ' ', 0xAF, 0x30)
 };

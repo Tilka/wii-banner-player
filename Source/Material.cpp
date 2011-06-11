@@ -21,7 +21,7 @@ misrepresented as being the original software.
 distribution.
 */
 
-#include <gl/glew.h>
+#include <GL/glew.h>
 
 #include "Material.h"
 #include "Endian.h"
@@ -361,12 +361,12 @@ void Material::Apply(const TextureList& textures) const
 		GX_SetTevAlphaOp(i, ts.alpha_in.op, ts.alpha_in.bias, ts.alpha_in.bias, ts.alpha_in.bias, ts.alpha_in.reg_id);
 		GX_SetTevKAlphaSel(i, ts.alpha_in.constant_sel);
 
-		GX_SetTevIndirect(i, ts.ind.tex_id, ts.ind.format, ts.ind.bias, ts.ind.mtx, 
+		GX_SetTevIndirect(i, ts.ind.tex_id, ts.ind.format, ts.ind.bias, ts.ind.mtx,
 			ts.ind.wrap_s, ts.ind.wrap_t, ts.ind.add_prev, ts.ind.utc_lod, ts.ind.alpha);
 
 		++i;
 	}
-	
+
 	// enable correct number of tev stages
 	GX_SetNumTevStages(i);
 	}
@@ -425,7 +425,7 @@ void Material::ProcessHermiteKey(const KeyType& type, float value)
 			return;
 		}
 	}
-	
+
 	Base::ProcessHermiteKey(type, value);
 }
 
@@ -442,7 +442,7 @@ void Material::ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data)
 			return;
 		//}
 	}
-	
+
 	Base::ProcessStepKey(type, data);
 }
 
