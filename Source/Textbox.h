@@ -33,8 +33,8 @@ class Textbox : public Pane
 {
 public:
 	typedef Pane Base;
-	
-	static const u32 BINARY_MAGIC = 'txt1';
+
+	static const u32 BINARY_MAGIC = MAKE_FOURCC('t', 'x', 't', '1');
 
 	void Load(std::istream& file);
 
@@ -44,7 +44,7 @@ private:
 	u16 material_index, font_index;
 
 	u8 text_position, text_alignment;
-    
+
 	GXColor colors[2];	// top and bottom apparently
 
 	float width, height;	// character width and height ?

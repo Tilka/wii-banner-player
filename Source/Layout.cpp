@@ -36,12 +36,12 @@ namespace WiiBanner
 
 enum BinaryMagic : u32
 {
-	BINARY_MAGIC_LAYOUT = 'RLYT',
+	BINARY_MAGIC_LAYOUT = MAKE_FOURCC('R', 'L', 'Y', 'T'),
 
-	BINARY_MAGIC_PANE_PUSH = 'pas1',
-	BINARY_MAGIC_PANE_POP = 'pae1',
-	BINARY_MAGIC_GROUP_PUSH = 'grs1',
-	BINARY_MAGIC_GROUP_POP = 'gre1'
+	BINARY_MAGIC_PANE_PUSH = MAKE_FOURCC('p', 'a', 's', '1'),
+	BINARY_MAGIC_PANE_POP = MAKE_FOURCC('p', 'a', 'e', '1'),
+	BINARY_MAGIC_GROUP_PUSH = MAKE_FOURCC('g', 'r', 's', '1'),
+	BINARY_MAGIC_GROUP_POP = MAKE_FOURCC('g', 'r', 'e', '1')
 };
 
 template <typename P>
@@ -65,11 +65,11 @@ void Layout::Load(std::istream& file)
 	u16 endian;
 	u16 version;
 	u32 filesize;
-	u16 offset; // offset to first section
+	u16 first_section_offset; // offset to first section
 	u16 section_count;
 
 	file >> header_magic >> BE >> endian >> version
-		>> filesize >> offset >> section_count;
+		>> filesize >> first_section_offset >> section_count;
 
 	if (header_magic != BINARY_MAGIC_LAYOUT
 		|| endian != 0xFEFF
@@ -92,7 +92,7 @@ void Layout::Load(std::istream& file)
 	};
 
 	// seek to the first section
-	file.seekg(file_start + offset, std::ios::beg);
+	file.seekg(file_start + first_section_offset, std::ios::beg);
 
 	ReadSections(file, section_count, [&](FourCC magic, std::streamoff section_start)
 	{
@@ -238,21 +238,26 @@ Layout::~Layout()
 
 void Layout::Render(float aspect_ratio, float zoom) const
 {
-	glLoadIdentity();
-
 	// TODO: make this work good :p
 	Vec2f adjust;
 	adjust.x = aspect_ratio / 4 * 3;
 	adjust.y = 1.f;
 
-	glOrtho(0.f, width * adjust.x, 0.f, height * adjust.y, -1000.f, 1000.f);
-	// assuming always centered, hope this isn't an issue
-	glTranslatef(width / 2 * adjust.x, height / 2 * adjust.y, 0.f);
+	glPushMatrix();
 
-	glScalef(zoom, zoom, 1.f);
+	//glOrtho(0.f, width * adjust.x, 0.f, height * adjust.y, -1000.f, 1000.f);
+	// assuming always centered, hope this isn't an issue
+	//glTranslatef(width / 2 * adjust.x, height / 2 * adjust.y, 0.f);
+
+	glTranslatef(0.5, 0.5, 0);
+	glScalef(zoom / (width * adjust.x), -zoom / (height * adjust.y), 1.f);
+
+	//glScalef(zoom, zoom, 1.f);
 
 	foreach (Pane* pane, panes)
 		pane->Render(resources, 0xff, adjust);
+
+	glPopMatrix();
 }
 
 void Layout::SetFrame(FrameNumber frame_number)

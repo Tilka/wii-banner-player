@@ -52,7 +52,7 @@ private:
 class TextureList : public std::vector<Texture*>
 {
 public:
-	static const u32 BINARY_MAGIC = 'txl1';
+	static const u32 BINARY_MAGIC = MAKE_FOURCC('t', 'x', 'l', '1');
 };
 
 }

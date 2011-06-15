@@ -43,7 +43,7 @@ class Pane : public Animator
 public:
 	typedef Animator Base;
 
-	static const u32 BINARY_MAGIC = 'pan1';
+	static const u32 BINARY_MAGIC = MAKE_FOURCC('p', 'a', 'n', '1');
 
 	enum
 	{
@@ -99,7 +99,7 @@ protected:
 	void ProcessStepKey(const KeyType& type, StepKeyHandler::KeyData data);
 
 private:
-	virtual void Draw(const Resources& resources, u8 render_alpha, Vec2f adjust) const {};
+	virtual void Draw(const Resources&, u8, Vec2f) const {};
 
 	enum : u8
 	{
@@ -122,7 +122,7 @@ private:
 class Bounding : public Pane
 {
 public:
-	static const u32 BINARY_MAGIC = 'bnd1';
+	static const u32 BINARY_MAGIC = MAKE_FOURCC('b', 'n', 'd', '1');
 };
 
 // used by Picture and Window

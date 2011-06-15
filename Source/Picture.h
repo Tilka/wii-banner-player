@@ -34,7 +34,7 @@ class Picture : public Quad
 public:
 	typedef Quad Base;
 
-	static const u32 BINARY_MAGIC = 'pic1';
+	static const u32 BINARY_MAGIC = MAKE_FOURCC('p', 'i', 'c', '1');
 
 	void Load(std::istream& file);
 };

@@ -29,7 +29,6 @@
 			</Target>
 		</Build>
 		<Compiler>
-			<Add option="-Wall" />
 			<Add directory="Externals/dolphin-emu/Source" />
 		</Compiler>
 		<Linker>

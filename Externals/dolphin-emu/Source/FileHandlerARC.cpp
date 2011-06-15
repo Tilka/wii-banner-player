@@ -190,7 +190,7 @@ CARCFile::ExportFile(const std::string& _rFullPath, const std::string& _rExportF
 
 
 bool
-CARCFile::ExportAllFiles(const std::string& _rFullPath)
+CARCFile::ExportAllFiles(const std::string&)
 {
 	return(false);
 }
@@ -214,13 +214,13 @@ bool CARCFile::ParseBuffer(std::istream& file)
 	file.seekg(file_start + fst_offset, std::ios::beg);
 
 	// read all file infos
-	u32 name_offset, offset, filesize;
-	file >> BE >> name_offset >> offset >> filesize;
+	u32 root_name_offset, root_offset, root_filesize;
+	file >> BE >> root_name_offset >> root_offset >> root_filesize;
 
 	SFileInfo Root;
-	Root.m_NameOffset = name_offset;
-	Root.m_Offset = offset;
-	Root.m_FileSize = filesize;
+	Root.m_NameOffset = root_name_offset;
+	Root.m_Offset = root_offset;
+	Root.m_FileSize = root_filesize;
 
 	if (Root.IsDirectory())
 	{
@@ -231,7 +231,7 @@ bool CARCFile::ParseBuffer(std::istream& file)
 
 		for (size_t i = 0; i < m_FileInfoVector.size(); ++i)
 		{
-			u8* Offset = m_pBuffer + fst_offset + (i * 0xC);
+			//u8* Offset = m_pBuffer + fst_offset + (i * 0xC);
 
 			u32 name_offset, offset, filesize;
 			file >> BE >> name_offset >> offset >> filesize;

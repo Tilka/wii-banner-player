@@ -47,7 +47,7 @@ struct Resources
 class Layout
 {
 public:
-	static const u32 BINARY_MAGIC = 'lyt1';
+	static const u32 BINARY_MAGIC = MAKE_FOURCC('l', 'y', 't', '1');
 
 	void Load(std::istream& file);
 	~Layout();
@@ -80,7 +80,7 @@ public:
 	// TODO: move outside of Layout?
 	struct Group
 	{
-		static const u32 BINARY_MAGIC = 'grp1';
+		static const u32 BINARY_MAGIC = MAKE_FOURCC('g', 'r', 'p', '1');
 
 		enum
 		{

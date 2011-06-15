@@ -32,7 +32,7 @@ void Animator::LoadKeyFrames(std::istream& file, u8 tag_count, std::streamoff or
 {
 	ReadOffsetList<u32>(file, tag_count, origin, [&]
 	{
-		const std::streamoff origin = file.tellg();
+		const std::streamoff frame_origin = file.tellg();
 
 		u32 animation_type;
 		u8 entry_count;
@@ -40,7 +40,7 @@ void Animator::LoadKeyFrames(std::istream& file, u8 tag_count, std::streamoff or
 		file >> BE >> animation_type >> entry_count;
 		file.seekg(3, std::ios::cur);	// some padding
 
-		ReadOffsetList<u32>(file, entry_count, origin, [&]
+		ReadOffsetList<u32>(file, entry_count, frame_origin, [&]
 		{
 			u8 index;
 			u8 target;
@@ -150,7 +150,7 @@ float HermiteKeyHandler::GetFrame(FrameNumber frame_number) const
 
 	// find the current keyframe, or the one after it
 	auto next = keys.lower_bound(frame_number);
-	
+
 	// current frame is higher than any keyframe, use the last keyframe
 	if (keys.end() == next)
 		--next;
@@ -162,7 +162,7 @@ float HermiteKeyHandler::GetFrame(FrameNumber frame_number) const
 		--prev;
 
 	const float nf = next->first - prev->first;
-	if (0 == nf)
+	if (std::abs(nf) < 0.01)
 	{
 		// same frame numbers, just return the first's value
 		return prev->second.value;
@@ -173,12 +173,12 @@ float HermiteKeyHandler::GetFrame(FrameNumber frame_number) const
 		// this is a "Cubic Hermite spline" apparently
 
 		frame_number = Clamp(frame_number, prev->first, next->first);
-		
+
 		const float t = (frame_number - prev->first) / nf;
 
 		// old curve-less code
 		//return prev->second.value + (next->second.value - prev->second.value) * t;
- 
+
 		// curvy code from marcan, :p
 		return
 			prev->second.slope * nf * (t + powf(t, 3) - 2 * powf(t, 2)) +

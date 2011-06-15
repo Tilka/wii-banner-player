@@ -62,7 +62,7 @@ private:
 class FontList : public std::vector<Font*>
 {
 public:
-	static const u32 BINARY_MAGIC = 'fnl1';
+	static const u32 BINARY_MAGIC = MAKE_FOURCC('f', 'n', 'l', '1');
 };
 
 }

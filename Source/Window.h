@@ -33,8 +33,8 @@ class Window : public Quad
 {
 public:
 	typedef Quad Base;
-	
-	static const u32 BINARY_MAGIC = 'wnd1';
+
+	static const u32 BINARY_MAGIC = MAKE_FOURCC('w', 'n', 'd', '1');
 
 	void Load(std::istream& file);
 

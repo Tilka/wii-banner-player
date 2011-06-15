@@ -158,7 +158,7 @@ static struct
 		{ "/dev/acd%d", 0, 27 },
 		{ "/dev/cd%d", 0, 27 },
 #endif
-		{ NULL }
+		{ NULL, 0, 0 }
 	};
 
 // Returns true if a device is a block or char device and not a symbolic link
@@ -173,7 +173,7 @@ bool is_device(const char *source_name)
 }
 
 // Check a device to see if it is a DVD/CD-ROM drive
-static bool is_cdrom(const char *drive, char *mnttype)
+static bool is_cdrom(const char *drive, char *)
 {
 	bool is_cd=false;
 	int cdfd;

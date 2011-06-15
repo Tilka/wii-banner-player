@@ -31,7 +31,7 @@ distribution.
 
 enum : u32
 {
-	BINARY_MAGIC_LZ77 = 'LZ77'
+	BINARY_MAGIC_LZ77 = MAKE_FOURCC('L', 'Z', '7', '7')
 };
 
 class LZ77Decompressor

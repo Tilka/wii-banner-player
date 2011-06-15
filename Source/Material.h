@@ -109,7 +109,7 @@ private:
 		{
 			u8 tex_coord;
 			u8 color;
-			
+
 			u16 tex_map : 9;
 			u16 ras_sel : 2;
 			u16 tex_sel : 2;
@@ -151,7 +151,7 @@ private:
 				u8 utc_lod : 1;
 				u8 alpha : 2;
 				u8 empty4 : 2;
-			
+
 			} ind;
 		};
 	};
@@ -166,7 +166,7 @@ private:
 class MaterialList : public std::vector<Material*>
 {
 public:
-	static const u32 BINARY_MAGIC = 'mat1';
+	static const u32 BINARY_MAGIC = MAKE_FOURCC('m', 'a', 't', '1');
 };
 
 }

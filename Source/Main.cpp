@@ -80,19 +80,15 @@ Vec2i g_tile_size;
 
 void DrawIconBorder()
 {
-	glUseProgram(0);
-
-	const float
-		x = (float)(g_tile_size.x / 2),
-		y = (float)(g_tile_size.y / 2);
-
-	glBegin(GL_LINE_STRIP);
-	glVertex2f(-x * 2, -y + 1);
-	glVertex2f(x, -y + 1);
-	glVertex2f(x, y);
-	glVertex2f(-x + 1, y);
-	glVertex2f(-x + 1, -y * 2);
-	glEnd();
+//	glUseProgram(0);
+//
+//	glBegin(GL_LINE_STRIP);
+//	glVertex2f(0.9, 0.9);
+//	glVertex2f(0.9, 0);
+//	glVertex2f(0, 0);
+//	glVertex2f(0, 0.9);
+//	glVertex2f(0.9, 0.9);
+//	glEnd();
 }
 
 class Tile
@@ -113,22 +109,23 @@ public:
 		if (!(banner && banner->GetIcon()))
 			return;
 
-		// why doesn't this work
-#if 0
-		glClearColor(0.f, 0.f, 0.f, 1.f);
-#else
-		glLoadIdentity();
-		glOrtho(-1, 1, -1, 1, -1, 1);
+		glClear(GL_STENCIL_BUFFER_BIT);
+		glStencilFunc(GL_EQUAL, 0x1, 0x1);
+		glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
 
-		glColor4f(0.f, 0.f, 0.f, 1.f);
+		// silly
+		glScalef(1.f / g_tile_size.x, 1.f / g_tile_size.y, 1);
 
 		glBegin(GL_QUADS);
-		glVertex2f(-2, -2);
-		glVertex2f(2, -2);
-		glVertex2f(2, 2);
-		glVertex2f(-2, 2);
+		glVertex2i(g_tile_size.x - 1, g_tile_size.y - 1);
+		glVertex2i(g_tile_size.x - 1, 1);
+		glVertex2i(1, 1);
+		glVertex2i(1, g_tile_size.y - 1);
 		glEnd();
-#endif
+
+		glScalef(g_tile_size.x, g_tile_size.y, 1);
+
+		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 
 		// TODO: don't need to push everything
 		glPushAttrib(-1);
@@ -136,7 +133,7 @@ public:
 		glPopAttrib();
 	}
 
-	Vec2f position;
+	Vec2i position;
 	WiiBanner::Banner* banner;
 };
 
@@ -166,6 +163,7 @@ void ForEachFile(const std::string& search, F func)
 static std::vector<Tile*> g_tiles;
 static std::mutex g_tiles_lock;
 static int g_tile_columns;
+static int g_tile_row = 5;
 
 void AddTile(Tile* tile)
 {
@@ -173,7 +171,7 @@ void AddTile(Tile* tile)
 
 	std::lock_guard<std::mutex> lk(g_tiles_lock);
 
-	Vec2f v(0.f, 0.f);
+	Vec2i v(0.f, 0.f);
 	if (!g_tiles.empty())
 	{
 		v = g_tiles.back()->position;
@@ -197,7 +195,7 @@ void AddTile(Tile* tile)
 //	Common::CriticalSection& crit;
 //};
 
-Tile* FindTile(const Vec2f& pos)
+Tile* FindTile(const Vec2i& pos)
 {
 	Tile* ret = nullptr;
 
@@ -226,7 +224,7 @@ enum
 
 void LoadTile(const std::string& fname)
 {
-	g_worker.Push(PRIORITY_TILE, [](const std::string& fname)
+	g_worker.Push(PRIORITY_TILE, [fname]
 	{
 		auto* const bnr = new WiiBanner::Banner(fname);
 
@@ -246,7 +244,7 @@ void LoadTile(const std::string& fname)
 		else
 			delete bnr;
 
-	}, fname);
+	});
 }
 
 #if defined(_WIN32) && !defined(DEBUG) && NO_CONSOLE
@@ -321,7 +319,7 @@ int main(int argc, char* argv[])
 			adjust.x = mouse_position.x / g_tile_size.x - mouse_down_position.x / g_tile_size.x;
 			adjust.y = mouse_position.y / g_tile_size.y - mouse_down_position.y / g_tile_size.y;
 
-			if (adjust != Vec2f(0.f, 0.f))
+			//if (adjust != Vec2f(0.f, 0.f))
 				mouse_click = false;
 
 			static const float slide_speed = 0.2f;
@@ -339,9 +337,13 @@ int main(int argc, char* argv[])
 			adjust = tile_adjust;
 		}
 
-		glViewport((tile.position.x + adjust.x) * g_tile_size.x,
-			window.GetHeight() - (tile.position.y + adjust.y + 1) * g_tile_size.y,
-			g_tile_size.x, g_tile_size.y);
+		glPushMatrix();
+
+		glTranslatef(tile.position.x + adjust.x, tile.position.y + adjust.y, 0);
+
+//		glViewport((tile.position.x + adjust.x) * g_tile_size.x,
+//			window.GetHeight() - (tile.position.y + adjust.y + 1) * g_tile_size.y,
+//			g_tile_size.x, g_tile_size.y);
 
 		tile.Draw();
 
@@ -351,12 +353,17 @@ int main(int argc, char* argv[])
 			glColor4ub(0, 0, 0, 0xff);
 
 		DrawIconBorder();
+
+		glPopMatrix();
 	};
 
 	GX_Init(0, 0);
 
 	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glOrtho(0, g_tile_columns, g_tile_row, 0, -1000, 1000);
 
+	glEnable(GL_STENCIL_TEST);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_ALWAYS);
 
@@ -403,7 +410,7 @@ int main(int argc, char* argv[])
 				else
 				{
 					mouse_down_position = mouse_position;
-					tile_selected = FindTile(Vec2f(mouse_position.x / g_tile_size.x, mouse_position.y / g_tile_size.y));
+					tile_selected = FindTile(Vec2i(mouse_position.x / g_tile_size.x, mouse_position.y / g_tile_size.y));
 					tile_adjust = Vec2f(0.f, 0.f);
 
 					mouse_click = true;
@@ -413,11 +420,11 @@ int main(int argc, char* argv[])
 			case sf::Event::MouseButtonReleased:
 				if (tile_selected)
 				{
-					const Vec2f dest(mouse_position.x / g_tile_size.x, mouse_position.y / g_tile_size.y);
+					const Vec2i dest(mouse_position.x / g_tile_size.x, mouse_position.y / g_tile_size.y);
 
 					std::lock_guard<std::mutex> lk(g_tiles_lock);
 
-					Tile* const tile_dest = FindTile(Vec2f(dest.x, dest.y));
+					Tile* const tile_dest = FindTile(dest);
 					if (tile_dest)
 					{
 						if (mouse_click)
@@ -433,7 +440,7 @@ int main(int argc, char* argv[])
 
 									disable_full_banner();
 
-									std::lock_guard<std::mutex> lk(g_tiles_lock);
+									std::lock_guard<std::mutex> tlk(g_tiles_lock);
 									full_banner = tile_selected->banner;
 									full_banner->GetSound()->Play();
 								}

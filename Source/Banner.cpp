@@ -44,8 +44,8 @@ enum BinaryMagic : u32
 {
 	BINARY_MAGIC_U8_ARCHIVE = MAKE_FOURCC('U', 0xAA, '8', '-'),
 
-	BINARY_MAGIC_ANIMATION = 'RLAN',
-	BINARY_MAGIC_PANE_ANIMATION_INFO = 'pai1'
+	BINARY_MAGIC_ANIMATION = MAKE_FOURCC('R', 'L', 'A', 'N'),
+	BINARY_MAGIC_PANE_ANIMATION_INFO = MAKE_FOURCC('p', 'a', 'i', '1')
 };
 
 // load keyframes from a brlan file
@@ -108,9 +108,9 @@ FrameNumber LoadAnimators(std::istream& file, Layout& layout, u8 key_set)
 
 				u8 tag_count;
 				u8 is_material;
-				u16 pad;
+				u16 apad;
 
-				file >> BE >> tag_count >> is_material >> pad;
+				file >> BE >> tag_count >> is_material >> apad;
 
 				Animator* const animator = is_material ?
 					static_cast<Animator*>(layout.FindMaterial(animator_name)) :
