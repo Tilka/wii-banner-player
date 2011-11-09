@@ -464,7 +464,7 @@ int main(int argc, char* argv[])
 				switch (ev.Key.Code)
 				{
 					// reload all tiles
-				case sf::Key::Back:
+				case sf::Keyboard::Back:
 					g_worker.Clear();
 					full_banner = nullptr;
 					foreach (Tile* tile, g_tiles)
@@ -474,12 +474,12 @@ int main(int argc, char* argv[])
 					break;
 
 					// pause resume playback
-				case sf::Key::Space:
+				case sf::Keyboard::Space:
 					banner_play ^= true;
 					break;
 
 					// exit app
-				case sf::Key::Escape:
+				case sf::Keyboard::Escape:
 					window.Close();
 					break;
 				}
